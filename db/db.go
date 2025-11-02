@@ -47,7 +47,7 @@ func ConnectDb() {
 
 					// Run this once in your main.go or a migration script
 					// db.Migrator().DropTable(&models.User{}, &models.Products{})
-					db.AutoMigrate(&models.User{}, &models.Products{})
+					db.AutoMigrate(&models.User{}, &models.Products{}, &models.StoreSetting{})
 
 					return
 				}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -46,9 +47,13 @@ func GetUsers(db *gorm.DB) echo.HandlerFunc {
 func GetUserById(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		id := c.Param("id")
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid user id"})
+		}
 
 		var user models.User
-		if err := db.First(&user, id).Error; err != nil {
+		if err := db.First(&user, "id = ?", uid).Error; err != nil {
 			return c.JSON(http.StatusNotFound, echo.Map{"error": "User not found"})
 		}
 
@@ -59,7 +64,7 @@ func GetUserById(db *gorm.DB) echo.HandlerFunc {
 
 func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		id := c.Get("user_id").(uint)
+		id := c.Get("user_id").(uuid.UUID)
 		var user models.User
 
 		// find existing user
@@ -109,7 +114,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 
 			fmt.Println("Uploading to Cloudinary:", tempFilePath)
 
-			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%d/image", id))
+			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%s/image", id.String()))
 			if err != nil {
 				fmt.Println("Cloudinary upload failed:", err)
 				return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
@@ -146,7 +151,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 
 func Me(c echo.Context) error {
 	// Get user ID from context (set by middleware)
-	userID, ok := c.Get("user_id").(uint)
+	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Invalid user context"})
 	}

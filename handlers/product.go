@@ -36,7 +36,8 @@ type ProductResponse struct {
 	ImageUrls         datatypes.JSON    `json:"image_urls"`
 	Status            models.Status     `json:"status" gorm:"type:varchar(20);default:'UNDER_REVIEW'"`
 	Condition         string            `json:"condition"`
-	UserID            uint              `json:"user_id"`
+	UserID            uuid.UUID         `json:"user_id"`
+	BrandName         string            `json:"brand_name"`
 	User              models.PublicUser `json:"user"`
 	CreatedAt         time.Time         `json:"created_at"`
 	UpdatedAt         time.Time         `json:"updated_at"`
@@ -73,6 +74,7 @@ func convertToProductResponse(product models.Products) ProductResponse {
 		ImageUrls:         product.ImageUrls,
 		Status:            product.Status,
 		Condition:         product.Condition,
+		BrandName:         product.BrandName,
 		UserID:            product.UserID,
 		User:              publicUser,
 		CreatedAt:         product.CreatedAt,
@@ -84,7 +86,7 @@ func convertToProductResponse(product models.Products) ProductResponse {
 func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
-		userId := c.Get("user_id").(uint)
+		userId := c.Get("user_id").(uuid.UUID)
 		name := c.FormValue("product_name")
 		productPriceStr := c.FormValue("product_price")
 		marketPriceFromStr := c.FormValue("market_price_from")
@@ -96,8 +98,12 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		addressInState := c.FormValue("address_in_state")
 		outstandingIssues := c.FormValue("outstanding_issues")
 		condition := c.FormValue("condition")
+		brandName := c.FormValue("brand_name")
 		status := c.FormValue("status")
 
+		// if name == "" || productPriceStr == "" || marketPriceFromStr == "" || marketPriceToStr == "" || categoryName == "" || isNegotiableStr == "" || description == "" || state == "" || addressInState == "" || outstandingIssues == "" || condition == "" || brandName == "" {
+		// 	return c.JSON(http.StatusBadRequest, echo.Map{"error": "All fields are required"})
+		// }
 		// Convert string values to float64
 		productPrice, err := strconv.ParseFloat(productPriceStr, 64)
 		if err != nil {
@@ -148,7 +154,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			src.Close()
 			out.Close()
 
-			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%d/products", userId))
+			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%s/products", userId.String()))
 			if err != nil {
 				log.Printf("Cloudinary upload failed: %v", err)
 				return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
@@ -176,6 +182,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			AddressInState:    addressInState,
 			OutStandingIssues: outstandingIssues,
 			Condition:         condition,
+			BrandName:         brandName,
 			ImageUrls:         datatypes.JSON(imageUrlsJSON),
 			Status:            models.Status(status),
 			UserID:            userId,
@@ -198,7 +205,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 }
 func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		userId := c.Get("user_id").(uint)
+		userId := c.Get("user_id").(uuid.UUID)
 		id := c.Param("id")
 
 		// find matching product
@@ -219,10 +226,11 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		description := c.FormValue("description")
 		isNegotiable := c.FormValue("is_negotiable")
 		condition := c.FormValue("condition")
+		brandName := c.FormValue("brand_name")
 		status := c.FormValue("status")
 
 		if productName == "" || productPrice == "" || marketPriceFrom == "" || marketPriceTo == "" ||
-			categoryName == "" || isNegotiable == "" || description == "" || state == "" ||
+			categoryName == "" || isNegotiable == "" || description == "" || state == "" || brandName == "" ||
 			addressInState == "" || condition == "" {
 			return c.JSON(http.StatusBadRequest, echo.Map{"error": "All fields are required"})
 		}
@@ -276,7 +284,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 			src.Close()
 			out.Close()
 
-			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%d/products", userId))
+			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%s/products", userId.String()))
 			if err != nil {
 				log.Printf("Cloudinary upload failed: %v", err)
 				return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
@@ -297,7 +305,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		existingProduct.MarketPriceTo = marketPTo
 		existingProduct.CategoryName = categoryName
 		existingProduct.Condition = condition
-
+		existingProduct.BrandName = brandName
 		existingProduct.Description = description
 		existingProduct.IsNegotiable = isNeg
 		existingProduct.OutStandingIssues = outstandingIssues
@@ -335,6 +343,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		category := c.QueryParam("category_name")
 		status := c.QueryParam("status")
 		startDate := c.QueryParam("start_date")
+		state := c.QueryParam("state")
 		endDate := c.QueryParam("end_date")
 		minPrice := c.QueryParam("min_price")
 		maxPrice := c.QueryParam("max_price")
@@ -366,6 +375,10 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 
 		if status != "" {
 			query = query.Where("status = ?", status)
+		}
+
+		if state != "" {
+			query = query.Where("state = ?", state)
 		}
 
 		if startDate != "" && endDate != "" {
@@ -438,7 +451,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 
 func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		userId := c.Get("user_id").(uint)
+		userId := c.Get("user_id").(uuid.UUID)
 		baseUrl := c.Scheme() + "://" + c.Request().Host + c.Path()
 		var products []models.Products
 		query := db.Preload("User").Where("user_id = ?", userId)
@@ -448,6 +461,7 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 		category := c.QueryParam("category")
 		status := c.QueryParam("status")
 		startDate := c.QueryParam("start_date")
+		state := c.QueryParam("state")
 		endDate := c.QueryParam("end_date")
 		minPrice := c.QueryParam("min_price")
 		maxPrice := c.QueryParam("max_price")
@@ -472,6 +486,9 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 		}
 		if status != "" {
 			query = query.Where("status = ?", status)
+		}
+		if state != "" {
+			query = query.Where("state = ?", state)
 		}
 		if startDate != "" && endDate != "" {
 			query = query.Where("created_at BETWEEN ? AND ?", startDate, endDate)
@@ -536,8 +553,12 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		id := c.Param("id")
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid product id"})
+		}
 		var product models.Products
-		if err := db.Preload("User").First(&product, id).Error; err != nil {
+		if err := db.Preload("User").First(&product, "id = ?", uid).Error; err != nil {
 			return c.JSON(http.StatusNotFound, echo.Map{"error": "Product not found"})
 		}
 
@@ -550,7 +571,7 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 
 func GetUserProduct(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		userID := c.Get("user_id").(uint)
+		userID := c.Get("user_id").(uuid.UUID)
 		ProductID := c.Param("id")
 
 		var product models.Products
@@ -569,7 +590,7 @@ func GetUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		UserId := c.Get("user_id").(uint)
+		UserId := c.Get("user_id").(uuid.UUID)
 		id := c.Param("id")
 
 		var product models.Products
@@ -579,5 +600,23 @@ func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		return c.JSON(http.StatusOK, echo.Map{"message": "Product deleted successfully"})
+	}
+}
+
+func GetTotalProductsByCatgory(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		category := c.QueryParam("category_name")
+		var products models.Products
+
+		if category == "" {
+			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Category is required"})
+		}
+
+		var total int64
+		if err := db.Model(&products).Where("category_name = ?", category).Count(&total).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrived product counts"})
+		}
+
+		return c.JSON(http.StatusOK, echo.Map{"message": "Products counts retrived", "category": category, "count": total})
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -27,8 +28,12 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		if userID, ok := claims["user_id"].(float64); ok {
-			c.Set("user_id", uint(userID))
+		if userIDStr, ok := claims["user_id"].(string); ok {
+			uid, err := uuid.Parse(userIDStr)
+			if err != nil {
+				return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token user id"})
+			}
+			c.Set("user_id", uid)
 		} else {
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token claims"})
 		}

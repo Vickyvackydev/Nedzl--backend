@@ -49,10 +49,13 @@ func main() {
 	auth.POST("/products", handlers.CreateProduct(db.DB))
 	e.GET("/products", handlers.GetAllProducts(db.DB))
 	e.GET("/products/:id", handlers.GetSingleProduct(db.DB))
+	e.GET("/store-settings/:id", handlers.GetStoreSettings(db.DB))
 	auth.PUT("/products/:id/user", handlers.UpdateUserProduct(db.DB))
 	auth.GET("/products/user", handlers.GetUserProducts(db.DB))
 	auth.GET("/products/:id/user", handlers.GetUserProduct(db.DB))
 	auth.PATCH("/users/update", handlers.UpdateUser(db.DB))
+	auth.POST("/store-settings", handlers.CreateStoreSettings(db.DB))
+
 	auth.GET("/users", handlers.GetUsers(db.DB))
 	auth.GET("/users/:id", handlers.GetUserById(db.DB))
 	auth.DELETE("/products/:id/user", handlers.DeleteUserProduct(db.DB))
