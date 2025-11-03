@@ -1,0 +1,13 @@
+# Ignore files that shouldn't be deployed to Railway
+.env
+.env.local
+.env.*.local
+.git
+.gitignore
+node_modules
+*.md
+!README.md
+docker-compose.yml
+.DS_Store
+*.log
+

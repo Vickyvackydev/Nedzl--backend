@@ -1,28 +1,34 @@
-# use official golang image
-FROM golang:1.24.5
+# Use official golang image
+FROM golang:1.24.5 AS builder
 
-
-# set working directory
+# Set working directory
 WORKDIR /app
 
+# Copy go mod files
+COPY go.mod go.sum ./
 
-#copy the source code
-
-COPY . .
-
-# download and install dependencies
-
-# RUN go get -d -v ./...
+# Download dependencies
 RUN go mod download
 
-#build the go app
+# Copy source code
+COPY . .
 
-RUN go build -o go-crud-api .
+# Build the Go app
+RUN CGO_ENABLED=0 GOOS=linux go build -o go-crud-api .
 
-#expose the port
+# Final stage - use minimal image
+FROM alpine:latest
 
+# Install ca-certificates for HTTPS requests
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/go-crud-api .
+
+# Expose port (Railway will set PORT env var)
 EXPOSE 8000
 
-#ruh the executable
-
+# Run the executable
 CMD ["./go-crud-api"]

@@ -31,18 +31,14 @@ func main() {
 
 	// Global middleware to return JSON
 	e.Use(middleware.Logger())
-	
+	e.Use(middleware.Recover())
+
 	// CORS configuration for production deployment
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Requested-With"},
-		ExposeHeaders:   []string{echo.HeaderContentLength, echo.HeaderContentType},
-		AllowCredentials: false, // Must be false when AllowOrigins is "*"
-		MaxAge:          86400, // Cache preflight requests for 24 hours
+		AllowOrigins: []string{"http://localhost:5175/"},
+		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS},
 	}))
 
-	e.Use(middleware.Recover())
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -77,7 +73,7 @@ func main() {
 	if port == "" {
 		port = "8000" // Default port for local development
 	}
-	
+
 	address := "0.0.0.0:" + port
 	log.Printf("Server running at http://%s", address)
 	e.Logger.Fatal(e.Start(address))

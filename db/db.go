@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -16,6 +17,11 @@ var DB *gorm.DB
 
 func ConnectDb() {
 	dbConnUrl := os.Getenv("DATABASE_URL")
+	// Ensure sslmode is set to disable for local development and add a password placeholder
+	if !strings.Contains(dbConnUrl, "sslmode=") {
+		dbConnUrl += " sslmode=disable"
+	}
+
 	maxRetries := 30
 	retryDelay := 2 * time.Second
 
