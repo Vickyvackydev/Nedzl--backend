@@ -5,6 +5,7 @@ import (
 	"api/handlers"
 
 	jwtMiddleware "api/middleware"
+	"os"
 	"strconv"
 
 	"log"
@@ -30,11 +31,15 @@ func main() {
 
 	// Global middleware to return JSON
 	e.Use(middleware.Logger())
-	// e.Use(middleware.CORS())
+	
+	// CORS configuration for production deployment
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Requested-With"},
+		ExposeHeaders:   []string{echo.HeaderContentLength, echo.HeaderContentType},
+		AllowCredentials: false, // Must be false when AllowOrigins is "*"
+		MaxAge:          86400, // Cache preflight requests for 24 hours
 	}))
 
 	e.Use(middleware.Recover())
@@ -67,8 +72,15 @@ func main() {
 	auth.GET("/users/:id", handlers.GetUserById(db.DB))
 	auth.DELETE("/products/:id/user", handlers.DeleteUserProduct(db.DB))
 
-	log.Println("Server running at http://localhost:8000")
-	e.Logger.Fatal(e.Start("0.0.0.0:8000"))
+	// Get port from environment variable (Railway provides PORT)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000" // Default port for local development
+	}
+	
+	address := "0.0.0.0:" + port
+	log.Printf("Server running at http://%s", address)
+	e.Logger.Fatal(e.Start(address))
 
 }
 
