@@ -30,7 +30,13 @@ func main() {
 
 	// Global middleware to return JSON
 	e.Use(middleware.Logger())
-	e.Use(middleware.CORS())
+	// e.Use(middleware.CORS())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+	}))
+
 	e.Use(middleware.Recover())
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -49,6 +55,7 @@ func main() {
 	auth.POST("/products", handlers.CreateProduct(db.DB))
 	e.GET("/products", handlers.GetAllProducts(db.DB))
 	e.GET("/products/:id", handlers.GetSingleProduct(db.DB))
+	e.GET("/products/counts", handlers.GetTotalProductsByCatgory(db.DB))
 	e.GET("/store-settings/:id", handlers.GetStoreSettings(db.DB))
 	auth.PUT("/products/:id/user", handlers.UpdateUserProduct(db.DB))
 	auth.GET("/products/user", handlers.GetUserProducts(db.DB))

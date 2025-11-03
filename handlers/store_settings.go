@@ -20,6 +20,7 @@ type StoreResponse struct {
 	HowDoWeLocateYou  string            `json:"how_do_we_locate_you"`
 	BusinessHoursFrom string            `json:"business_hours_from"`
 	BusinessHoursTo   string            `json:"business_hours_to"`
+	Region            string            `json:"region"`
 	UserID            uuid.UUID         `json:"user_id"` // needed to link with the currently authenticated user
 	User              models.PublicUser `json:"user"`
 	CreatedAt         time.Time         `json:"created_at" gorm:"column:created_at"`
@@ -51,6 +52,7 @@ func convertToStoreResponse(settings models.StoreSetting) StoreResponse {
 		HowDoWeLocateYou:  settings.HowDoWeLocateYou,
 		BusinessHoursFrom: settings.BusinessHoursFrom,
 		BusinessHoursTo:   settings.BusinessHoursTo,
+		Region:            settings.Region,
 		UserID:            settings.UserID,
 		User:              publicUser,
 		CreatedAt:         settings.CreatedAt,
@@ -118,6 +120,7 @@ func UpdateStoreSettings(db *gorm.DB) echo.HandlerFunc {
 		existing.StoreName = storeSettings.StoreName
 		existing.Address = storeSettings.Address
 		existing.State = storeSettings.State
+		existing.Region = storeSettings.Region
 		existing.HowDoWeLocateYou = storeSettings.HowDoWeLocateYou
 		existing.BusinessHoursFrom = storeSettings.BusinessHoursFrom
 		existing.BusinessHoursTo = storeSettings.BusinessHoursTo

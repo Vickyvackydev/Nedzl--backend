@@ -94,6 +94,7 @@ type Products struct {
 	Condition         string         `json:"condition"`
 	BrandName         string         `json:"brand_name"`
 	ImageUrls         datatypes.JSON `json:"image_urls"`
+	NewImages         datatypes.JSON `json:"new_images"`
 	Status            Status         `json:"status" gorm:"type:varchar(20);default:'UNDER_REVIEW'"`
 	UserID            uuid.UUID      `json:"user_id" gorm:"type:uuid"`
 	User              User           `json:"user" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
@@ -109,6 +110,7 @@ type StoreSetting struct {
 	StoreName         string         `json:"store_name"`
 	Address           string         `json:"address"`
 	State             string         `json:"state"`
+	Region            string         `json:"regoin"`
 	HowDoWeLocateYou  string         `json:"how_do_we_locate_you"`
 	BusinessHoursFrom string         `json:"business_hours_from"`
 	BusinessHoursTo   string         `json:"business_hours_to"`

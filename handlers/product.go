@@ -127,7 +127,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid form data"})
 		}
 
-		files := form.File["image_urls"]
+		files := form.File["new_images"]
 		if len(files) == 0 {
 			return c.JSON(http.StatusBadRequest, echo.Map{"error": "You must upload at least one image"})
 		}
@@ -252,17 +252,24 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 		isNeg := strings.ToLower(isNegotiable) == "true"
 
+		// Parse image URLs from form (frontend might send as JSON array string)
+		imageUrlsStr := c.FormValue("image_urls") // e.g. ["https://res.cloudinary.com/...","https://..."]
+		var imageUrls []string
+		if imageUrlsStr != "" {
+			_ = json.Unmarshal([]byte(imageUrlsStr), &imageUrls)
+		}
+
 		form, err := c.MultipartForm()
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid form input"})
 		}
 
-		files := form.File["image_urls"]
+		files := form.File["new_images"]
 		if len(files) == 0 {
 			return c.JSON(http.StatusBadRequest, echo.Map{"error": "You must upload at least one image"})
 		}
 
-		var imageUrls []string
+		// var imageUrls []string
 
 		for _, file := range files {
 			src, err := file.Open()
@@ -605,18 +612,20 @@ func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 func GetTotalProductsByCatgory(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		category := c.QueryParam("category_name")
+
 		var products models.Products
 
-		if category == "" {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Category is required"})
+		type Result struct {
+			Category string `json:"category"`
+			Total    int64  `json:"total"`
 		}
 
-		var total int64
-		if err := db.Model(&products).Where("category_name = ?", category).Count(&total).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrived product counts"})
+		var results []Result
+
+		if err := db.Model(&products).Select("category_name as category, COUNT(*)  as total").Group("category_name").Scan(&results).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrieve product counts"})
 		}
 
-		return c.JSON(http.StatusOK, echo.Map{"message": "Products counts retrived", "category": category, "count": total})
+		return c.JSON(http.StatusOK, echo.Map{"message": "Products counts retrived", "results": results})
 	}
 }
