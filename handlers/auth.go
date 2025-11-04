@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"api/models"
+	"api/utils"
 
 	// "database/sql"
 
@@ -64,29 +65,29 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		var req models.RegisterRequest
 
 		if err := c.Bind(&req); err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid input"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
 		}
 
 		if !models.IsValidRole(req.Role) || req.Role == "" {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid role. Allowed - ADMIN, USER"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid role. Allowed - ADMIN, USER", nil)
 		}
 		// check if user already exists
 		var existinguser models.User
 
 		if err := db.Where("user_name = ?", req.UserName).First(&existinguser).Error; err == nil {
-			return c.JSON(http.StatusConflict, echo.Map{"error": "Username already exists"})
+			return utils.ResponseError(c, http.StatusConflict, "Username already exists", nil)
 		}
 
 		if err := db.Where("email = ?", req.Email).First(&existinguser).Error; err == nil {
-			return c.JSON(http.StatusConflict, echo.Map{"error": "Email already exists"})
+			return utils.ResponseError(c, http.StatusConflict, "Email already exists", nil)
 		}
 		if err := db.Where("phone_number = ?", req.PhoneNumber).First(&existinguser).Error; err == nil {
-			return c.JSON(http.StatusConflict, echo.Map{"error": "Phone number has being used"})
+			return utils.ResponseError(c, http.StatusConflict, "Phone number has being used", nil)
 		}
 
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to hash password"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to hash password", err)
 		}
 
 		user := models.User{
@@ -98,17 +99,14 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		if err := db.Create(&user).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to create user"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}
 
-		return c.JSON(http.StatusCreated, echo.Map{
-			"message": "Registered successfully",
-			"data": map[string]string{
-				"user_name":    user.UserName,
-				"email":        user.Email,
-				"phone_number": user.PhoneNumber,
-				"role":         string(user.Role),
-			},
+		return utils.ResponseSucess(c, http.StatusCreated, "Registered successfully", map[string]string{
+			"user_name":    user.UserName,
+			"email":        user.Email,
+			"phone_number": user.PhoneNumber,
+			"role":         string(user.Role),
 		})
 	}
 }
@@ -118,7 +116,7 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 		var req models.LoginRequest
 
 		if err := c.Bind(&req); err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid input"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
 		}
 
 		// check if user email exist in database
@@ -126,11 +124,13 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 		var user models.User
 
 		if err := db.Where("email =?", req.Email).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
+			// c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
+			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid request body", err)
 		}
 		// check if password matches existing one in database
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
+			// return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
+			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid login credentials", err)
 		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -140,12 +140,21 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 
 		tokenString, _ := token.SignedString(jwtSecretKey)
 
-		return c.JSON(http.StatusOK, echo.Map{"message": "Login succesfully", "token": tokenString, "user": map[string]string{
-			"user_name":    user.UserName,
-			"email":        user.Email,
-			"phone_number": user.PhoneNumber,
-			"role":         string(user.Role),
-		}})
+		// return c.JSON(http.StatusOK, echo.Map{"message": "Login succesfully", "token": tokenString, "user": map[string]string{
+		// 	"user_name":    user.UserName,
+		// 	"email":        user.Email,
+		// 	"phone_number": user.PhoneNumber,
+		// 	"role":         string(user.Role),
+		// }})
+		return utils.ResponseSucess(c, http.StatusOK, "Login successfully", echo.Map{
+			"token": tokenString,
+			"user": map[string]string{
+				"user_name":    user.UserName,
+				"email":        user.Email,
+				"phone_number": user.PhoneNumber,
+				"role":         string(user.Role),
+			},
+		})
 	}
 
 }

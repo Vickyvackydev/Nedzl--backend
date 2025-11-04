@@ -22,7 +22,7 @@ func GetUsers(db *gorm.DB) echo.HandlerFunc {
 		var users []models.User
 
 		if err := db.Find(&users).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrieve users"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve users", err)
 		}
 
 		// convert to public format
@@ -39,7 +39,7 @@ func GetUsers(db *gorm.DB) echo.HandlerFunc {
 			}
 
 		}
-		return c.JSON(http.StatusOK, publicUsers)
+		return utils.ResponseSucess(c, http.StatusOK, "Users retrieved successfully", publicUsers)
 	}
 
 }
@@ -49,15 +49,15 @@ func GetUserById(db *gorm.DB) echo.HandlerFunc {
 		id := c.Param("id")
 		uid, err := uuid.Parse(id)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid user id"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid user id", err)
 		}
 
 		var user models.User
 		if err := db.First(&user, "id = ?", uid).Error; err != nil {
-			return c.JSON(http.StatusNotFound, echo.Map{"error": "User not found"})
+			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
 		}
 
-		return c.JSON(http.StatusOK, echo.Map{"id": user.ID, "user_name": user.UserName, "email": user.Email})
+		return utils.ResponseSucess(c, http.StatusOK, "User retrieved successfully", echo.Map{"id": user.ID, "user_name": user.UserName, "email": user.Email})
 	}
 
 }
@@ -69,7 +69,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 
 		// find existing user
 		if err := db.First(&user, id).Error; err != nil {
-			return c.JSON(http.StatusNotFound, echo.Map{"error": "User not found"})
+			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
 		}
 
 		name := c.FormValue("user_name")
@@ -97,19 +97,19 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 		if err == nil && file != nil {
 			src, err := file.Open()
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to open file"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open file", err)
 			}
 			defer src.Close()
 
 			tempFilePath := filepath.Join(os.TempDir(), file.Filename)
 			out, err := os.Create(tempFilePath)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to create temp file"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
 			}
 			defer out.Close()
 
 			if _, err := io.Copy(out, src); err != nil {
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to write temp file"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to write temp file", err)
 			}
 
 			fmt.Println("Uploading to Cloudinary:", tempFilePath)
@@ -117,7 +117,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%s/image", id.String()))
 			if err != nil {
 				fmt.Println("Cloudinary upload failed:", err)
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to upload image", err)
 			}
 
 			user.ImageUrl = url
@@ -127,7 +127,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 		// save changes
 
 		if err := db.Save(&user).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to update user"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update user", err)
 		}
 
 		response := models.PublicUser{
@@ -142,10 +142,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 			UpdatedAt:   user.UpdatedAt,
 		}
 
-		return c.JSON(http.StatusOK, echo.Map{
-			"message": "User updated successfully",
-			"user":    response,
-		})
+		return utils.ResponseSucess(c, http.StatusOK, "User updated successfully", echo.Map{"user": response})
 	}
 }
 
@@ -153,12 +150,12 @@ func Me(c echo.Context) error {
 	// Get user ID from context (set by middleware)
 	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
-		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Invalid user context"})
+		return utils.ResponseError(c, http.StatusInternalServerError, "Invalid user context", nil)
 	}
 
 	var user models.User
 	if err := db.DB.First(&user, userID).Error; err != nil {
-		return c.JSON(http.StatusNotFound, echo.Map{"error": "User not found"})
+		return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
 	}
 
 	// Convert to PublicUser for response
@@ -175,5 +172,5 @@ func Me(c echo.Context) error {
 		DeletedAt:   user.DeletedAt,
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{"message": "User Details Retrieved", "user": publicUser})
+	return utils.ResponseSucess(c, http.StatusOK, "User Details Retrieved", echo.Map{"user": publicUser})
 }

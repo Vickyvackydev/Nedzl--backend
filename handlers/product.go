@@ -107,15 +107,15 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		// Convert string values to float64
 		productPrice, err := strconv.ParseFloat(productPriceStr, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid product price"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product price", err)
 		}
 		marketPriceFrom, err := strconv.ParseFloat(marketPriceFromStr, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid market price (from)"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid market price (from)", err)
 		}
 		marketPriceTo, err := strconv.ParseFloat(marketPriceToStr, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid market price (to)"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid market price (to)", err)
 		}
 
 		// Convert string ("true"/"false") to bool
@@ -124,12 +124,12 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 
 		form, err := c.MultipartForm()
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid form data"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid form data", err)
 		}
 
 		files := form.File["new_images"]
 		if len(files) == 0 {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "You must upload at least one image"})
+			return utils.ResponseError(c, http.StatusBadRequest, "You must upload at least one image", nil)
 		}
 
 		var imageUrls []string
@@ -137,19 +137,19 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		for _, file := range files {
 			src, err := file.Open()
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to open image"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open image", err)
 			}
 
 			tempFilePath := fmt.Sprintf("/tmp/%s", file.Filename)
 			out, err := os.Create(tempFilePath)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to create temp file"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
 			}
 
 			if _, err := io.Copy(out, src); err != nil {
 				src.Close()
 				out.Close()
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to copy image"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to copy image", err)
 			}
 			src.Close()
 			out.Close()
@@ -157,7 +157,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%s/products", userId.String()))
 			if err != nil {
 				log.Printf("Cloudinary upload failed: %v", err)
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to upload image", err)
 			}
 
 			imageUrls = append(imageUrls, url)
@@ -167,7 +167,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		// Marshal the image URLs array into JSON for your datatypes.JSON field
 		imageUrlsJSON, err := json.Marshal(imageUrls)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to process image URLs"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to process image URLs", err)
 		}
 
 		products := models.Products{
@@ -189,18 +189,18 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		if err := db.Create(&products).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to save product"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to save product", err)
 		}
 
 		// Preload the user data for the response
 		if err := db.Preload("User").First(&products, products.ID).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to load product with user data"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to load product with user data", err)
 		}
 
 		// Convert to safe response without password
 		response := convertToProductResponse(products)
 
-		return c.JSON(http.StatusCreated, echo.Map{"message": "Product created successfully", "products": response})
+		return utils.ResponseSucess(c, http.StatusCreated, "Product created successfully", echo.Map{"products": response})
 	}
 }
 func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
@@ -211,7 +211,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		// find matching product
 		var existingProduct models.Products
 		if err := db.Where("id = ? AND user_id = ?", id, userId).First(&existingProduct).Error; err != nil {
-			return c.JSON(http.StatusForbidden, echo.Map{"error": "Unauthorized or not found"})
+			return utils.ResponseError(c, http.StatusForbidden, "Unauthorized or not found", err)
 
 		}
 
@@ -232,20 +232,20 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		if productName == "" || productPrice == "" || marketPriceFrom == "" || marketPriceTo == "" ||
 			categoryName == "" || isNegotiable == "" || description == "" || state == "" || brandName == "" ||
 			addressInState == "" || condition == "" {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "All fields are required"})
+			return utils.ResponseError(c, http.StatusBadRequest, "All fields are required", nil)
 		}
 
 		productP, err := strconv.ParseFloat(productPrice, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid product price"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product price", err)
 		}
 		marketPFrom, err := strconv.ParseFloat(marketPriceFrom, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid market price (from)"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid market price (from)", err)
 		}
 		marketPTo, err := strconv.ParseFloat(marketPriceTo, 64)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid market price (to)"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid market price (to)", err)
 		}
 
 		// Convert string ("true"/"false") to bool
@@ -261,12 +261,12 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 		form, err := c.MultipartForm()
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid form input"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid form input", err)
 		}
 
 		files := form.File["new_images"]
 		if len(files) == 0 {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "You must upload at least one image"})
+			return utils.ResponseError(c, http.StatusBadRequest, "You must upload at least one image", nil)
 		}
 
 		// var imageUrls []string
@@ -274,19 +274,19 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		for _, file := range files {
 			src, err := file.Open()
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to open image"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open image", err)
 			}
 
 			tempFilePath := fmt.Sprintf("/tmp/%s", file.Filename)
 			out, err := os.Create(tempFilePath)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to create temp file"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
 			}
 
 			if _, err := io.Copy(out, src); err != nil {
 				src.Close()
 				out.Close()
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to copy image"})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to copy image", err)
 			}
 			src.Close()
 			out.Close()
@@ -294,7 +294,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 			url, err := utils.UploadToCloudinary(tempFilePath, fmt.Sprintf("users/%s/products", userId.String()))
 			if err != nil {
 				log.Printf("Cloudinary upload failed: %v", err)
-				return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to upload image", err)
 			}
 
 			imageUrls = append(imageUrls, url)
@@ -303,7 +303,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 		updatedImageUrlJson, err := json.Marshal(imageUrls)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to process image URLs"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to process image URLs", err)
 		}
 
 		existingProduct.Name = productName
@@ -324,17 +324,17 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 		// Update only fields that were provided (prevent zero overwrite)
 		if err := db.Save(&existingProduct).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to update product"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update product", err)
 		}
 
 		// Reload product with user info for response
 		if err := db.Preload("User").First(&existingProduct, existingProduct.ID).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to load updated product"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to load updated product", err)
 		}
 
 		response := convertToProductResponse(existingProduct)
 
-		return c.JSON(http.StatusOK, echo.Map{"message": "Product updated successfully", "data": response})
+		return utils.ResponseSucess(c, http.StatusOK, "Product updated successfully", echo.Map{"data": response})
 	}
 }
 func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
@@ -405,7 +405,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 
 		query.Model(&models.Products{}).Count(&total)
 		if err := query.Limit(limit).Offset(offSet).Find(&products).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrieve products"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve products", err)
 		}
 
 		// -- CONVERT TO SAFE RESPONSE --
@@ -442,7 +442,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 
 		}
 
-		return c.JSON(http.StatusOK, echo.Map{
+		return utils.ResponseSucess(c, http.StatusOK, "Products retrieved successfully", echo.Map{
 			"page":        page,
 			"limit":       limit,
 			"total":       total,
@@ -510,7 +510,7 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 		var total int64
 		query.Model(&models.Products{}).Count(&total)
 		if err := query.Limit(limit).Offset(offset).Find(&products).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to fetch user products"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch user products", err)
 		}
 
 		var responses []ProductResponse
@@ -544,7 +544,7 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 
 		}
 
-		return c.JSON(http.StatusOK, echo.Map{
+		return utils.ResponseSucess(c, http.StatusOK, "User products retrieved successfully", echo.Map{
 			"page":        page,
 			"limit":       limit,
 			"total":       total,
@@ -562,17 +562,17 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 		id := c.Param("id")
 		uid, err := uuid.Parse(id)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid product id"})
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product id", err)
 		}
 		var product models.Products
 		if err := db.Preload("User").First(&product, "id = ?", uid).Error; err != nil {
-			return c.JSON(http.StatusNotFound, echo.Map{"error": "Product not found"})
+			return utils.ResponseError(c, http.StatusNotFound, "Product not found", err)
 		}
 
 		// Convert to safe response without password
 		response := convertToProductResponse(product)
 
-		return c.JSON(http.StatusOK, echo.Map{"message": "Product fetched", "product": response})
+		return utils.ResponseSucess(c, http.StatusOK, "Product fetched", echo.Map{"product": response})
 	}
 }
 
@@ -584,13 +584,13 @@ func GetUserProduct(db *gorm.DB) echo.HandlerFunc {
 		var product models.Products
 
 		if err := db.Preload("User").Where("id = ? AND user_id =?", ProductID, userID).First(&product).Error; err != nil {
-			return c.JSON(http.StatusNotFound, echo.Map{"error": "Product not found or unauthorized"})
+			return utils.ResponseError(c, http.StatusNotFound, "Product not found or unauthorized", err)
 		}
 
 		// Convert to safe response without password
 		response := convertToProductResponse(product)
 
-		return c.JSON(http.StatusOK, echo.Map{"message": "User product fetched successfully", "product": response})
+		return utils.ResponseSucess(c, http.StatusOK, "User product fetched successfully", echo.Map{"product": response})
 	}
 
 }
@@ -603,10 +603,10 @@ func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 		var product models.Products
 
 		if err := db.Where("id =? AND user_id =?", id, UserId).Delete(&product).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to delete product"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete product", err)
 		}
 
-		return c.JSON(http.StatusOK, echo.Map{"message": "Product deleted successfully"})
+		return utils.ResponseSucess(c, http.StatusOK, "Product deleted successfully", nil)
 	}
 }
 
@@ -623,9 +623,9 @@ func GetTotalProductsByCatgory(db *gorm.DB) echo.HandlerFunc {
 		var results []Result
 
 		if err := db.Model(&products).Select("category_name as category, COUNT(*)  as total").Group("category_name").Scan(&results).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrieve product counts"})
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve product counts", err)
 		}
 
-		return c.JSON(http.StatusOK, echo.Map{"message": "Products counts retrived", "results": results})
+		return utils.ResponseSucess(c, http.StatusOK, "Products counts retrieved", echo.Map{"results": results})
 	}
 }
