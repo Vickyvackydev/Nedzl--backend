@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
+
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -17,56 +17,45 @@ var DB *gorm.DB
 
 func ConnectDb() {
 	dbConnUrl := os.Getenv("DATABASE_URL")
-	// Ensure sslmode is set to disable for local development and add a password placeholder
-	if !strings.Contains(dbConnUrl, "sslmode=") {
-		dbConnUrl += " sslmode=disable"
+	if dbConnUrl == "" {
+		log.Fatal("❌ DATABASE_URL not set — please configure it in your environment")
 	}
 
-	maxRetries := 30
-	retryDelay := 2 * time.Second
+	fmt.Println("🧩 Connecting to database...")
 
-	for i := 0; i < maxRetries; i++ {
-		fmt.Printf("Attempting to connect to database... (attempt %d/%d)\n", i+1, maxRetries)
-
-		db, err := gorm.Open(postgres.New(postgres.Config{
-			DSN: dbConnUrl,
-		}), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
-			NowFunc: func() time.Time {
-				return time.Now().UTC()
-			},
-		})
-
-		if err == nil {
-			// Test the connection
-			sqlDB, err := db.DB()
-			if err == nil {
-				err = sqlDB.Ping()
-				if err == nil {
-					// Configure connection pool
-					sqlDB.SetMaxIdleConns(10)
-					sqlDB.SetMaxOpenConns(100)
-					sqlDB.SetConnMaxLifetime(time.Hour)
-
-					DB = db
-					fmt.Println("✅ Database connected successfully")
-
-					// Run this once in your main.go or a migration script
-					// db.Migrator().DropTable(&models.User{}, &models.Products{})
-					db.AutoMigrate(&models.User{}, &models.Products{}, &models.StoreSetting{})
-
-					return
-				}
-			}
-		}
-
-		fmt.Printf("Failed to connect to database: %v\n", err)
-
-		if i < maxRetries-1 {
-			fmt.Printf("Retrying in %v...\n", retryDelay)
-			time.Sleep(retryDelay)
-		}
+	// Connect to PostgreSQL
+	db, err := gorm.Open(postgres.Open(dbConnUrl), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+		NowFunc: func() time.Time {
+			return time.Now().UTC()
+		},
+	})
+	if err != nil {
+		log.Fatalf("❌ Failed to connect to database: %v", err)
 	}
 
-	log.Fatal("Failed to connect to database after all retries")
+	// Test the connection
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("❌ Failed to get DB from GORM: %v", err)
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		log.Fatalf("❌ Database ping failed: %v", err)
+	}
+
+	// Configure connection pool
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	DB = db
+	fmt.Println("✅ Connected to database successfully")
+
+	// Auto-migrate your models
+	if err := db.AutoMigrate(&models.User{}, &models.Products{}, &models.StoreSetting{}); err != nil {
+		log.Fatalf("❌ AutoMigrate failed: %v", err)
+	}
+
+	fmt.Println("🧱 Database migration completed successfully ✅")
 }

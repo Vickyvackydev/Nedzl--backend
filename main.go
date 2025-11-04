@@ -10,6 +10,7 @@ import (
 
 	"log"
 
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
@@ -18,6 +19,12 @@ import (
 
 func main() {
 
+	// 🧩 Load .env file first
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️  No .env file found, using system environment variables")
+	} else {
+		log.Println("✅ .env file loaded successfully")
+	}
 	db.ConnectDb()
 
 	// Echo instance
@@ -35,8 +42,9 @@ func main() {
 
 	// CORS configuration for production deployment
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:5175/"},
+		AllowOrigins: []string{"http://localhost:5175", "http://localhost:5174", "http://localhost:5173", "https://nedzl-market.vercel.app"},
 		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS},
+		AllowHeaders: []string{"Content-Type", "Authorization"},
 	}))
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
