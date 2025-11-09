@@ -610,6 +610,42 @@ func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 	}
 }
 
+func SearchProducts(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		query := c.QueryParam("q")
+		if query == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Missing search query", nil)
+		}
+
+		var products []models.Products
+
+		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand) LIKE ? OR LOWER(category_name) LIKE ?", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%").Limit(10).Find(&products).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch search results", err)
+		}
+
+		// Extract unique categories
+
+		categoryMap := make(map[string]bool)
+		var categories []string
+
+		for _, p := range products {
+
+			if p.CategoryName != "" && !categoryMap[p.CategoryName] {
+				categoryMap[p.CategoryName] = true
+				categories = append(categories, p.CategoryName)
+			}
+
+		}
+		response := map[string]interface{}{
+			"keywords":   []string{query},
+			"categories": categories,
+			"products":   products,
+		}
+		return utils.ResponseSucess(c, http.StatusOK, "Search Results Retrieved", response)
+
+	}
+}
+
 func GetTotalProductsByCatgory(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 

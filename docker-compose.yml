@@ -7,8 +7,8 @@ services:
     image: vickykodes/go-app:1.0.0
     environment:
       # Use DATABASE_URL for Go app connection string (GORM compatible)
-      # DATABASE_URL: "postgres://postgres:postgres@go_db:5432/ecommerce?sslmode=disable"
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: "postgres://postgres:postgres@go_db:5432/ecommerce?sslmode=disable"
+      # DATABASE_URL: ${DATABASE_URL}
 
       # Optional breakdown for clarity or future dynamic injection
       DB_HOST: go_db
