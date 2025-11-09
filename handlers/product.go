@@ -619,7 +619,7 @@ func SearchProducts(db *gorm.DB) echo.HandlerFunc {
 
 		var products []models.Products
 
-		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand) LIKE ? OR LOWER(category_name) LIKE ?", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%").Limit(10).Find(&products).Error; err != nil {
+		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ?", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%").Limit(10).Find(&products).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch search results", err)
 		}
 
