@@ -617,29 +617,81 @@ func SearchProducts(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusBadRequest, "Missing search query", nil)
 		}
 
+		searchTerm := "%" + strings.ToLower(strings.TrimSpace(query)) + "%"
+
 		var products []models.Products
 
-		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ?", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%", "%"+strings.ToLower(query)+"%").Limit(10).Find(&products).Error; err != nil {
+		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ?", searchTerm, searchTerm, searchTerm).Limit(20).Find(&products).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch search results", err)
 		}
 
-		// Extract unique categories
+		// Extract unique categories with counts
 
-		categoryMap := make(map[string]bool)
-		var categories []string
+		categoryMap := make(map[string]int)
+		brandMap := make(map[string]int)
 
 		for _, p := range products {
 
-			if p.CategoryName != "" && !categoryMap[p.CategoryName] {
-				categoryMap[p.CategoryName] = true
-				categories = append(categories, p.CategoryName)
+			if p.CategoryName != "" {
+				categoryMap[p.CategoryName]++
+			}
+			if p.BrandName != "" {
+				categoryMap[p.BrandName]++
 			}
 
 		}
+		// response := map[string]interface{}{
+		// 	"keywords":   []string{query},
+		// 	"categories": categories,
+		// 	"products":   products,
+		// }
+
+		var suggestions []models.Suggestion
+
+		suggestions = append(suggestions, models.Suggestion{
+			Type: "keyword",
+			Text: query,
+		})
+
+		for category, count := range categoryMap {
+			suggestions = append(suggestions, models.Suggestion{
+				Type:     "category",
+				Text:     query,
+				Category: category,
+				Count:    count,
+			})
+		}
+
+		for brand, count := range brandMap {
+			suggestions = append(suggestions, models.Suggestion{
+				Type:  "brand",
+				Text:  query,
+				Brand: brand,
+				Count: count,
+			})
+		}
+
+		productLimit := 5
+		if len(products) < 5 {
+
+			productLimit = len(products)
+		}
+
+		for i := 0; i < productLimit; i++ {
+			p := products[i]
+			suggestions = append(suggestions, models.Suggestion{
+				Type:      "product",
+				Text:      p.Name,
+				Category:  p.CategoryName,
+				Brand:     p.BrandName,
+				ProductID: p.ID.String(),
+			})
+		}
+
 		response := map[string]interface{}{
-			"keywords":   []string{query},
-			"categories": categories,
-			"products":   products,
+			"query":       query,
+			"suggestions": suggestions,
+			"total":       len(products),
 		}
 		return utils.ResponseSucess(c, http.StatusOK, "Search Results Retrieved", response)
 
@@ -663,5 +715,56 @@ func GetTotalProductsByCatgory(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "Products counts retrieved", echo.Map{"results": results})
+	}
+}
+
+func GetSearchResults(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		query := c.QueryParam("q")
+		category := c.QueryParam("category")
+		brand := c.QueryParam("brand")
+		page := c.QueryParam("page")
+
+		if page == "" {
+			page = "1"
+		}
+
+		pageNum, _ := strconv.Atoi(page)
+		limit := 20
+		offset := (pageNum - 1) * limit
+
+		dbQuery := db.Model(&models.Products{})
+
+		if query != "" {
+			searchTerm := "%" + strings.ToLower(strings.TrimSpace(query)) + "%"
+			dbQuery = dbQuery.Where("LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ?", searchTerm, searchTerm, searchTerm)
+		}
+		if category != "" {
+			dbQuery = dbQuery.Where("LOWER(category_name) = ?", strings.ToLower(category))
+		}
+
+		if brand != "" {
+			dbQuery = dbQuery.Where("LOWER(brand_name) = ?", strings.ToLower(brand))
+		}
+
+		var total int64
+		dbQuery.Count(&total)
+
+		var products []models.Products
+		if err := dbQuery.Limit(limit).Offset(offset).Find(&products).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch products", err)
+
+		}
+
+		response := map[string]interface{}{
+			"products":    products,
+			"total":       total,
+			"page":        pageNum,
+			"limit":       limit,
+			"total_pages": (total + int64(limit) - 1) / int64(limit),
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Products Retrieved", response)
+
 	}
 }

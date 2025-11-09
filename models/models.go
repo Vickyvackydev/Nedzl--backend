@@ -120,3 +120,12 @@ type StoreSetting struct {
 	UpdatedAt         time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt         gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
+
+type Suggestion struct {
+	Type      string `json:"type"` // "keyword", "category", "brand"
+	Text      string `json:"text"`
+	Category  string `json:"category,omitempty"`
+	Brand     string `json:"brand,omitempty"`
+	Count     int    `json:"count,omitempty"`
+	ProductID string `json:"product_id,omitempty"`
+}

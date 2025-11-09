@@ -68,6 +68,7 @@ func main() {
 	e.GET("/products/counts", handlers.GetTotalProductsByCatgory(db.DB))
 	e.GET("/store-settings/:id", handlers.GetStoreSettings(db.DB))
 	e.GET("/products/search", handlers.SearchProducts(db.DB))
+	e.GET("/products/search/results", handlers.GetSearchResults(db.DB))
 	auth.PUT("/products/:id/user", handlers.UpdateUserProduct(db.DB))
 	auth.GET("/products/user", handlers.GetUserProducts(db.DB))
 	auth.GET("/products/:id/user", handlers.GetUserProduct(db.DB))
