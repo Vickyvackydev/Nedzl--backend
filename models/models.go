@@ -129,3 +129,34 @@ type Suggestion struct {
 	Count     int    `json:"count,omitempty"`
 	ProductID string `json:"product_id,omitempty"`
 }
+
+type DashboardResponse struct {
+	Stats   DashboardStats   `json:"stats"`
+	Growth  DashboardGrowth  `json:"growth"`
+	Metrics DashboardMetrics `json:"metrics"`
+}
+
+type DashboardStats struct {
+	TotalProductsListed     int64 `json:"total_product_listed"`
+	ActiveProducts          int64 `json:"active_products"`
+	ClosedSoldProducts      int64 `json:"closed_sold_products"`
+	FlaggedReportedProducts int64 `json:"flagged_reported_products"`
+	TotalRegisteredSellers  int64 `json:"total_registered_sellers"`
+}
+type DashboardGrowth struct {
+	TotalProductsListed     float64 `json:"total_product_listed"`
+	ActiveProducts          float64 `json:"active_products"`
+	ClosedSoldProducts      float64 `json:"closed_sold_products"`
+	FlaggedReportedProducts float64 `json:"flagged_reported_products"`
+	TotalRegisteredSellers  float64 `json:"total_registered_sellers"`
+}
+
+type MonthlyMetric struct {
+	Month string `json:"month"`
+	Value int64  `json:"value"`
+}
+
+type DashboardMetrics struct {
+	CustomerSignUpMetrics []MonthlyMetric `json:"customer_signup_metrics"`
+	TotalSoldProducts     []MonthlyMetric `json:"total_sold_products"`
+}
