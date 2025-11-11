@@ -294,7 +294,7 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 
 		totalPages := int(math.Ceil(float64(total) / float64(limit)))
 
-		if err := query.Find(&users).Error; err != nil {
+		if err := query.Where("role = ?", models.RoleUser).Find(&users).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve users", err)
 
 		}
