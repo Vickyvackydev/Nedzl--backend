@@ -21,6 +21,11 @@ const (
 	StatusClosed   Status = "CLOSED"
 	StatusRejected Status = "REJCTED"
 )
+const (
+	UserActive      Status = "ACTIVE"
+	UserSuspended   Status = "SUSPENDED"
+	UserDeactivated Status = "DEACTIVATED"
+)
 
 const (
 	RoleAdmin Role = "ADMIN"
@@ -60,6 +65,7 @@ type PublicUser struct {
 	PhoneNumber string         `json:"phone_number"`
 	ImageUrl    string         `json:"image_url"`
 	Location    string         `json:"location"`
+	Status      Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
 	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
@@ -74,6 +80,7 @@ type User struct {
 	Password    string         `json:"password"`
 	ImageUrl    string         `json:"image_url"`
 	Location    string         `json:"location"`
+	Status      Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
 	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
@@ -159,4 +166,29 @@ type MonthlyMetric struct {
 type DashboardMetrics struct {
 	CustomerSignUpMetrics []MonthlyMetric `json:"customer_signup_metrics"`
 	TotalSoldProducts     []MonthlyMetric `json:"total_sold_products"`
+}
+
+type UserDashboardResponse struct {
+	Stats  UserDashboardStats  `json:"user_stats"`
+	Growth UserDashboardGrowth `json:"growth"`
+}
+
+type UserDashboardStats struct {
+	TotalSellers     int64 `json:"total_sellers"`
+	ActiveSellers    int64 `json:"active_sellers"`
+	SuspendedUsers   int64 `json:"suspended_users"`
+	DeactivatedUsers int64 `json:"deactivated_users"`
+}
+
+type UserDashboardGrowth struct {
+	TotalSellers     float64 `json:"total_sellers"`
+	ActiveSellers    float64 `json:"active_sellers"`
+	SuspendedUsers   float64 `json:"suspended_users"`
+	DeactivatedUsers float64 `json:"deactivated_users"`
+}
+
+type UserDashboardUsers struct {
+	User           PublicUser `json:"user"`
+	ListedProducts int64      `json:"listed_products"`
+	SoldProducts   int64      `json:"sold_products"`
 }

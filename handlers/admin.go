@@ -82,7 +82,7 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, startDate, now).Count(&flaggedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count flagged products", err)
 		}
-		if err := userModel.Where("created_at BETWEEN ? AND ? AND role =?", startDate, now, "USER").Count(&totalUsers).Error; err != nil {
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role =?", startDate, now, models.RoleUser).Count(&totalUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count registered users", err)
 		}
 
@@ -107,7 +107,7 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, prevStart, prevEnd).Count(&prevFlaggedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous flagged products", err)
 		}
-		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", prevStart, prevEnd, "USER").Count(&prevTotalUsers).Error; err != nil {
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", prevStart, prevEnd, models.RoleUser).Count(&prevTotalUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous registered users", err)
 		}
 
@@ -150,5 +150,183 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "Dashboard Overview Retrieved", response)
+	}
+}
+
+func GetUserDashboardOverview(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		now := time.Now()
+		period := c.QueryParam("period")
+
+		// Optional year override
+		currentYear := now.Year()
+		if yearParam := c.QueryParam("year"); yearParam != "" {
+			if y, err := strconv.Atoi(yearParam); err == nil {
+				currentYear = y
+			}
+		}
+
+		var startDate, prevStart, prevEnd time.Time
+		switch period {
+		case "7d":
+			startDate = now.AddDate(0, 0, -7)
+			prevEnd = startDate
+			prevStart = startDate.AddDate(0, 0, -7)
+		case "1m":
+			startDate = now.AddDate(0, -1, 0)
+			prevEnd = startDate
+			prevStart = startDate.AddDate(0, -1, 0)
+		case "1yr":
+			startDate = now.AddDate(-1, 0, 0)
+			prevEnd = startDate
+			prevStart = startDate.AddDate(-1, 0, 0)
+		default:
+			// Default to current year
+			startDate = time.Date(currentYear, 1, 1, 0, 0, 0, 0, now.Location())
+			prevEnd = startDate
+			prevStart = time.Date(currentYear-1, 1, 1, 0, 0, 0, 0, now.Location())
+		}
+
+		// --- Initialize variables ---
+		var (
+			totalSellers, activeSellers, suspendedSellers, deactivatedUsers        int64
+			prevSellers, prevActiveUsers, prevSuspendedUsers, prevDeactivatedUsers int64
+		)
+
+		// productModel := db.Model(&models.Products{})
+		userModel := db.Model(&models.User{})
+
+		// --- Current period queries ---
+
+		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ? AND role = ?", models.UserActive, startDate, now, models.RoleUser).Count(&activeSellers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count active sellers", err)
+		}
+		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.UserSuspended, startDate, now).Count(&suspendedSellers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count closed suspended users", err)
+		}
+		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.UserDeactivated, startDate, now).Count(&deactivatedUsers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count deactivated users", err)
+		}
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", startDate, now, models.RoleUser).Count(&totalSellers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count registered users", err)
+		}
+
+		stats := models.UserDashboardStats{
+			TotalSellers:     totalSellers,
+			ActiveSellers:    activeSellers,
+			SuspendedUsers:   suspendedSellers,
+			DeactivatedUsers: deactivatedUsers,
+		}
+
+		// --- Previous period for growth ---
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", prevStart, prevEnd, models.RoleUser).Count(&prevSellers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous total products", err)
+		}
+		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.UserActive, prevStart, prevEnd).Count(&prevActiveUsers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous active products", err)
+		}
+		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.UserSuspended, prevStart, prevEnd).Count(&prevSuspendedUsers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous closed products", err)
+		}
+		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, prevStart, prevEnd).Count(&prevDeactivatedUsers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous flagged products", err)
+		}
+
+		growth := models.UserDashboardGrowth{
+			TotalSellers:     calculateGrowthRate(prevSellers, totalSellers),
+			ActiveSellers:    calculateGrowthRate(prevActiveUsers, activeSellers),
+			SuspendedUsers:   calculateGrowthRate(prevSuspendedUsers, suspendedSellers),
+			DeactivatedUsers: calculateGrowthRate(prevDeactivatedUsers, deactivatedUsers),
+			// TotalRegisteredSellers:  calculateGrowthRate(prevTotalUsers, totalUsers),
+		}
+
+		response := models.UserDashboardResponse{
+			Stats: stats,
+
+			Growth: growth,
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Dashboard Overview Retrieved", response)
+	}
+}
+
+func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		query := db.Model(&models.PublicUser{})
+		page, _ := strconv.Atoi(c.QueryParam("page"))
+		limit, _ := strconv.Atoi(c.QueryParam("limit"))
+
+		name := c.QueryParam("name")
+		phone := c.QueryParam("phone_number")
+		status := c.QueryParam("status")
+		if page < 1 {
+			page = 1
+		}
+		if limit < 1 {
+			limit = 10
+		}
+		offset := (page - 1) * limit
+
+		var users []models.PublicUser
+
+		if name != "" {
+			query = query.Where("user_name ILIKE = ?", "%"+name+"%")
+		}
+
+		if phone != "" {
+			query = query.Where("phone_number ILIKE = ?", "%"+phone+"%")
+
+		}
+
+		if status != "" {
+			query = query.Where("status = ?", status)
+		}
+		// count total
+		var total int64
+
+		if err := query.Count(&total).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve total users count", err)
+		}
+
+		query = query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&users)
+
+		// calculate total pages
+
+		totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+		if err := query.Find(&users).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve users", err)
+
+		}
+
+		var result []models.UserDashboardUsers
+
+		for _, user := range users {
+
+			var listedCount, soldCount int64
+			if err := db.Model(&models.Products{}).Where("user_id = ?", user.ID).Count(&listedCount).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrive user product counts", err)
+			}
+			if err := db.Model(&models.Products{}).Where("user_id = ? AND status = ?", user.ID, models.StatusClosed).Count(&soldCount).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrive user sold product counts", err)
+			}
+
+			result = append(result, models.UserDashboardUsers{
+				User:           user,
+				ListedProducts: listedCount,
+				SoldProducts:   soldCount,
+			})
+
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Users fetched successfully", echo.Map{
+			"data": result,
+			"meta": map[string]interface{}{
+				"page":       page,
+				"limit":      limit,
+				"totalPages": totalPages,
+			},
+		})
+
 	}
 }
