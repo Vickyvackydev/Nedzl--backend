@@ -60,9 +60,9 @@ type PublicUser struct {
 	PhoneNumber string         `json:"phone_number"`
 	ImageUrl    string         `json:"image_url"`
 	Location    string         `json:"location"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `json:"deleted_at"`
+	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 type User struct {
@@ -74,8 +74,8 @@ type User struct {
 	Password    string         `json:"password"`
 	ImageUrl    string         `json:"image_url"`
 	Location    string         `json:"location"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
