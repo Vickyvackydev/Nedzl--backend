@@ -82,7 +82,7 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, startDate, now).Count(&flaggedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count flagged products", err)
 		}
-		if err := userModel.Where("created_at BETWEEN ? AND ?", startDate, now).Count(&totalUsers).Error; err != nil {
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role =?", startDate, now, "USER").Count(&totalUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count registered users", err)
 		}
 
@@ -107,7 +107,7 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, prevStart, prevEnd).Count(&prevFlaggedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous flagged products", err)
 		}
-		if err := userModel.Where("created_at BETWEEN ? AND ?", prevStart, prevEnd).Count(&prevTotalUsers).Error; err != nil {
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", prevStart, prevEnd, "USER").Count(&prevTotalUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous registered users", err)
 		}
 
