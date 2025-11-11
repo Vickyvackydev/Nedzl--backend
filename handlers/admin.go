@@ -252,7 +252,7 @@ func GetUserDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 
 func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		query := db.Model(&models.PublicUser{})
+		query := db.Model(&models.User{})
 		page, _ := strconv.Atoi(c.QueryParam("page"))
 		limit, _ := strconv.Atoi(c.QueryParam("limit"))
 
@@ -267,7 +267,7 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 		}
 		offset := (page - 1) * limit
 
-		var users []models.PublicUser
+		var users []models.User
 
 		if name != "" {
 			query = query.Where("user_name ILIKE = ?", "%"+name+"%")
@@ -312,7 +312,19 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 			}
 
 			result = append(result, models.UserDashboardUsers{
-				User:           user,
+				User: models.PublicUser{
+					ID:          user.ID,
+					UserName:    user.UserName,
+					Email:       user.Email,
+					Role:        string(user.Role),
+					PhoneNumber: user.PhoneNumber,
+					Location:    user.Location,
+					Status:      user.Status,
+					ImageUrl:    user.ImageUrl,
+					CreatedAt:   user.CreatedAt,
+					UpdatedAt:   user.UpdatedAt,
+					DeletedAt:   user.DeletedAt,
+				},
 				ListedProducts: listedCount,
 				SoldProducts:   soldCount,
 			})
