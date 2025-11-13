@@ -342,3 +342,213 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 
 	}
 }
+
+func GetActiveProductsUsers(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		query := db.Model(&models.Products{})
+		page, _ := strconv.Atoi(c.QueryParam("page"))
+		limit, _ := strconv.Atoi(c.QueryParam("limit"))
+
+		name := c.QueryParam("name")
+		phone := c.QueryParam("phone_number")
+		status := c.QueryParam("status")
+		if page < 1 {
+			page = 1
+		}
+		if limit < 1 {
+			limit = 10
+		}
+		offset := (page - 1) * limit
+
+		var users []models.User
+
+		if name != "" {
+			query = query.Where("name ILIKE = ?", "%"+name+"%")
+		}
+
+		if phone != "" {
+			query = query.Where("phone_number ILIKE = ?", "%"+phone+"%")
+
+		}
+
+		if status != "" {
+			query = query.Where("status = ?", status)
+		}
+		// count total
+		var total int64
+
+		if err := query.Count(&total).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve total users count", err)
+		}
+
+		query = query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&users)
+
+		// calculate total pages
+
+		totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+		if err := query.Where("role = ?", models.RoleUser).Find(&users).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve users", err)
+
+		}
+
+		var result []models.UserDashboardUsers
+
+		for _, user := range users {
+
+			var listedCount, soldCount int64
+			if err := db.Model(&models.Products{}).Where("user_id = ?", user.ID).Count(&listedCount).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrive user product counts", err)
+			}
+			if err := db.Model(&models.Products{}).Where("user_id = ? AND status = ?", user.ID, models.StatusClosed).Count(&soldCount).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrive user sold product counts", err)
+			}
+
+			result = append(result, models.UserDashboardUsers{
+				User: models.PublicUser{
+					ID:          user.ID,
+					UserName:    user.UserName,
+					Email:       user.Email,
+					Role:        string(user.Role),
+					PhoneNumber: user.PhoneNumber,
+					Location:    user.Location,
+					Status:      user.Status,
+					ImageUrl:    user.ImageUrl,
+					CreatedAt:   user.CreatedAt,
+					UpdatedAt:   user.UpdatedAt,
+					DeletedAt:   user.DeletedAt,
+				},
+				ListedProducts: listedCount,
+				SoldProducts:   soldCount,
+			})
+
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Users fetched successfully", echo.Map{
+			"data": result,
+			"meta": map[string]interface{}{
+				"page":       page,
+				"limit":      limit,
+				"totalPages": totalPages,
+			},
+		})
+
+	}
+}
+
+func GetAdminProducts(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var products []models.Products
+		// if err := db.Preload("User").Find(&products).Error; err != nil {
+		// 	return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrieve products"})
+		// }
+		baseUrl := c.Scheme() + "://" + c.Request().Host + c.Path()
+		query := db.Preload("User")
+
+		search := c.QueryParam("search")
+		category := c.QueryParam("category_name")
+		status := c.QueryParam("status")
+		startDate := c.QueryParam("start_date")
+		state := c.QueryParam("state")
+		endDate := c.QueryParam("end_date")
+		minPrice := c.QueryParam("min_price")
+		maxPrice := c.QueryParam("max_price")
+		keyword := c.QueryParam("keyword")
+
+		// -- PAGINATION -- //
+
+		page, _ := strconv.Atoi(c.QueryParam("page"))
+		limit, _ := strconv.Atoi(c.QueryParam("limit"))
+		if page < 1 {
+			page = 1
+		}
+
+		if limit < 1 {
+			limit = 10
+		}
+
+		offSet := (page - 1) * limit
+
+		// -- APPLY FILTERS --
+
+		if search != "" {
+			query = query.Where("name ILIKE ?", "%"+search+"%")
+		}
+
+		if category != "" {
+			query = query.Where("category_name = ?", category)
+		}
+
+		if status != "" {
+			query = query.Where("status = ?", status)
+		}
+
+		if state != "" {
+			query = query.Where("state = ?", state)
+		}
+
+		if startDate != "" && endDate != "" {
+			query = query.Where("created_at BETWEEN  ? AND ?", startDate, endDate)
+		}
+		if minPrice != "" && maxPrice != "" {
+			query = query.Where("product_price BETWEEN  ? AND ?", minPrice, maxPrice)
+		}
+		if keyword != "" {
+			query = query.Where("product_name ILIKE ? OR description ILIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+		}
+
+		query = query.Order("created_at DESC")
+		// -- GET RESULTS --
+
+		var total int64
+
+		query.Model(&models.Products{}).Count(&total)
+		if err := query.Limit(limit).Offset(offSet).Find(&products).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve products", err)
+		}
+
+		// -- CONVERT TO SAFE RESPONSE --
+
+		// Convert to safe responses without passwords
+		var responses []ProductResponse
+		for _, product := range products {
+			responses = append(responses, convertToProductResponse(product))
+		}
+
+		totalPages := int(math.Ceil(float64(total) / float64(limit)))
+		// var nextPageURL *string
+		// if page < totalPages {
+		// 	url := fmt.Sprintf("%s?page=%d&limit=%d", baseUrl, page+1, limit)
+		// 	nextPageURL = &url
+		// }
+
+		// var prevPageURL *string
+		// if page > 1 {
+		// 	url := fmt.Sprintf("%s?page=%d&limit=%d", baseUrl, page-1, limit)
+		// 	prevPageURL = &url
+		// }
+
+		// --- Generate all pages ---
+
+		pages := []map[string]interface{}{}
+		for i := 1; i <= totalPages; i++ {
+
+			pageURL := fmt.Sprintf("%s?page=%d&limit=%d", baseUrl, i, limit)
+			pages = append(pages, map[string]interface{}{
+				"page": i,
+				"url":  pageURL,
+			})
+
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Users fetched successfully", echo.Map{
+			"data": responses,
+			"meta": map[string]interface{}{
+				"page":       page,
+				"limit":      limit,
+				"totalPages": totalPages,
+			},
+		})
+	}
+
+}
