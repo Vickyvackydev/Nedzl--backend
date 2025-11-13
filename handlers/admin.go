@@ -425,7 +425,8 @@ func GetActiveProductsUsers(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "Users fetched successfully", echo.Map{
-			"data": result,
+			"data":        result,
+			"total_count": total,
 			"meta": map[string]interface{}{
 				"page":       page,
 				"limit":      limit,
