@@ -332,7 +332,8 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "Users fetched successfully", echo.Map{
-			"data": result,
+			"data":  result,
+			"total": total,
 			"meta": map[string]interface{}{
 				"page":       page,
 				"limit":      limit,
