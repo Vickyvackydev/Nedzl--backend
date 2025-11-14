@@ -584,7 +584,7 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 		if err := db.First(&user, "id = ?", uid).Error; err != nil {
 			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
 		}
-		db.First(&storeSettings, "user_id = ?", uid)
+		storeSettingsErr := db.First(&storeSettings, "user_id = ?", uid).Error
 
 		// var totalProductListed, activeProduct, soldProducts, flaggedProducts int64
 		totalProductListed, err := utils.CountUserProducts(db, uid)
@@ -604,6 +604,8 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve user flagged products count", err)
 		}
 
+		var storeResponse *models.UserStoreDetails = nil
+
 		userResponse := models.PublicUser{
 			ID:        user.ID,
 			UserName:  user.UserName,
@@ -616,20 +618,22 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 			UpdatedAt: user.UpdatedAt,
 		}
 
-		storeResponse := models.UserStoreDetails{
-			ID:                storeSettings.ID,
-			BusinessName:      storeSettings.BusinessName,
-			AboutCompany:      storeSettings.AboutCompany,
-			StoreName:         storeSettings.StoreName,
-			Address:           storeSettings.Address,
-			State:             storeSettings.State,
-			HowDoWeLocateYou:  storeSettings.HowDoWeLocateYou,
-			BusinessHoursFrom: storeSettings.BusinessHoursFrom,
-			BusinessHoursTo:   storeSettings.BusinessHoursTo,
-			Region:            storeSettings.Region,
-			UserID:            user.ID,
-			CreatedAt:         storeSettings.CreatedAt,
-			UpdatedAt:         storeSettings.UpdatedAt,
+		if storeSettingsErr == nil {
+			storeResponse = &models.UserStoreDetails{
+				ID:                storeSettings.ID,
+				BusinessName:      storeSettings.BusinessName,
+				AboutCompany:      storeSettings.AboutCompany,
+				StoreName:         storeSettings.StoreName,
+				Address:           storeSettings.Address,
+				State:             storeSettings.State,
+				HowDoWeLocateYou:  storeSettings.HowDoWeLocateYou,
+				BusinessHoursFrom: storeSettings.BusinessHoursFrom,
+				BusinessHoursTo:   storeSettings.BusinessHoursTo,
+				Region:            storeSettings.Region,
+				UserID:            user.ID,
+				CreatedAt:         storeSettings.CreatedAt,
+				UpdatedAt:         storeSettings.UpdatedAt,
+			}
 		}
 
 		userMetrics := models.UserProductStats{

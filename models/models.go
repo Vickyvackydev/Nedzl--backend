@@ -218,7 +218,7 @@ type UserStoreDetails struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 type UserDetailsResponse struct {
-	UserDetail   PublicUser       `json:"user_details"`
-	Metrics      UserProductStats `json:"metrics"`
-	StoreDetails UserStoreDetails `json:"store_details"`
+	UserDetail   PublicUser        `json:"user_details"`
+	Metrics      UserProductStats  `json:"metrics"`
+	StoreDetails *UserStoreDetails `json:"store_details"`
 }
