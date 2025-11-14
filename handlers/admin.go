@@ -619,12 +619,10 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		storeResponse := models.UserStoreDetails{
-			ID:           storeSettings.ID,
-			BusinessName: storeSettings.BusinessName,
-
-			AboutCompany: storeSettings.AboutCompany,
-			StoreName:    storeSettings.StoreName,
-
+			ID:                storeSettings.ID,
+			BusinessName:      storeSettings.BusinessName,
+			AboutCompany:      storeSettings.AboutCompany,
+			StoreName:         storeSettings.StoreName,
 			Address:           storeSettings.Address,
 			State:             storeSettings.State,
 			HowDoWeLocateYou:  storeSettings.HowDoWeLocateYou,
@@ -632,10 +630,8 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 			BusinessHoursTo:   storeSettings.BusinessHoursTo,
 			Region:            storeSettings.Region,
 			UserID:            user.ID,
-
-			CreatedAt: storeSettings.CreatedAt,
-
-			UpdatedAt: storeSettings.UpdatedAt,
+			CreatedAt:         storeSettings.CreatedAt,
+			UpdatedAt:         storeSettings.UpdatedAt,
 		}
 
 		userMetrics := models.UserProductStats{
