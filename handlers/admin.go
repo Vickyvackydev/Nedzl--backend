@@ -602,13 +602,15 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		userResponse := models.PublicUser{
-			ID:       user.ID,
-			UserName: user.UserName,
-			Email:    user.Email,
-			Role:     string(user.Role),
-			ImageUrl: user.ImageUrl,
-			Location: user.Location,
-			Status:   user.Status,
+			ID:        user.ID,
+			UserName:  user.UserName,
+			Email:     user.Email,
+			Role:      string(user.Role),
+			ImageUrl:  user.ImageUrl,
+			Location:  user.Location,
+			Status:    user.Status,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
 		}
 
 		userMetrics := models.UserProductStats{
