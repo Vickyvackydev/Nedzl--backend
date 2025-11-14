@@ -12,6 +12,7 @@ import (
 	// "github.com/labstack/echo"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+
 	"gorm.io/gorm"
 )
 
@@ -577,10 +578,14 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		var user models.User
+		var storeSettings models.StoreSetting
 		// productModel := db.Model(&models.Products{})
 
 		if err := db.First(&user, "id = ?", uid).Error; err != nil {
 			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
+		}
+		if err := db.First(&storeSettings, "id = ?", uid).Error; err != nil {
+			return utils.ResponseError(c, http.StatusNotFound, "User Store Settings not found", err)
 		}
 
 		// var totalProductListed, activeProduct, soldProducts, flaggedProducts int64
@@ -613,6 +618,26 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 			UpdatedAt: user.UpdatedAt,
 		}
 
+		storeResponse := models.UserStoreDetails{
+			ID:           storeSettings.ID,
+			BusinessName: storeSettings.BusinessName,
+
+			AboutCompany: storeSettings.AboutCompany,
+			StoreName:    storeSettings.StoreName,
+
+			Address:           storeSettings.Address,
+			State:             storeSettings.State,
+			HowDoWeLocateYou:  storeSettings.HowDoWeLocateYou,
+			BusinessHoursFrom: storeSettings.BusinessHoursFrom,
+			BusinessHoursTo:   storeSettings.BusinessHoursTo,
+			Region:            storeSettings.Region,
+			UserID:            user.ID,
+
+			CreatedAt: storeSettings.CreatedAt,
+
+			UpdatedAt: storeSettings.UpdatedAt,
+		}
+
 		userMetrics := models.UserProductStats{
 			TotalProductsListed: totalProductListed,
 			ActiveProducts:      activeProduct,
@@ -621,8 +646,9 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		response := models.UserDetailsResponse{
-			UserDetail: userResponse,
-			Metrics:    userMetrics,
+			UserDetail:   userResponse,
+			Metrics:      userMetrics,
+			StoreDetails: storeResponse,
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "User Details Retrieved", response)

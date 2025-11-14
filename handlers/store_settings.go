@@ -150,11 +150,13 @@ func GetStoreSettings(db *gorm.DB) echo.HandlerFunc {
 
 		var storeSettings models.StoreSetting
 
-		if err := db.Preload("User").Where("user_id =?", uid).First(&storeSettings).Error; err != nil {
+		if err := db.Preload("User").Where("user_id = ?", uid).First(&storeSettings).Error; err != nil {
 			return utils.ResponseError(c, http.StatusNotFound, "Store settings not found", err)
 		}
 
-		return utils.ResponseSucess(c, http.StatusOK, "User store settings retrieved", echo.Map{"store_settings": storeSettings})
+		response := convertToStoreResponse(storeSettings)
+
+		return utils.ResponseSucess(c, http.StatusOK, "User store settings retrieved", response)
 	}
 
 }
