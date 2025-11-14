@@ -281,13 +281,17 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 		if status != "" {
 			query = query.Where("status = ?", status)
 		}
+
+		query = query.Where("role = ?", models.RoleUser)
 		// count total
+
 		var total int64
 
-		if err := query.Count(&total).Where("role = ? AND status = ?", models.RoleUser, status).Error; err != nil {
+		if err := query.Count(&total).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve total users count", err)
 		}
 
+		// arrange newer data above older ones
 		query = query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&users)
 
 		// calculate total pages
