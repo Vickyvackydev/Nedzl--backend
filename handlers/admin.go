@@ -584,7 +584,7 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 		if err := db.First(&user, "id = ?", uid).Error; err != nil {
 			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
 		}
-		if err := db.First(&storeSettings, "id = ?", uid).Error; err != nil {
+		if err := db.First(&storeSettings, "user_id = ?", uid).Error; err != nil {
 			return utils.ResponseError(c, http.StatusNotFound, "User Store Settings not found", err)
 		}
 
