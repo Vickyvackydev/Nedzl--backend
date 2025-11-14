@@ -10,6 +10,7 @@ import (
 	"time"
 
 	// "github.com/labstack/echo"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -445,11 +446,13 @@ func GetActiveProductsUsers(db *gorm.DB) echo.HandlerFunc {
 func GetAdminProducts(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var products []models.Products
+
 		// if err := db.Preload("User").Find(&products).Error; err != nil {
 		// 	return c.JSON(http.StatusInternalServerError, echo.Map{"error": "Failed to retrieve products"})
 		// }
 		baseUrl := c.Scheme() + "://" + c.Request().Host + c.Path()
 		query := db.Preload("User")
+		user_id := c.QueryParam("user_id")
 
 		search := c.QueryParam("search")
 		category := c.QueryParam("category_name")
@@ -476,6 +479,10 @@ func GetAdminProducts(db *gorm.DB) echo.HandlerFunc {
 		offSet := (page - 1) * limit
 
 		// -- APPLY FILTERS --
+
+		if user_id != "" {
+			query = query.Where("user_id = ?", user_id)
+		}
 
 		if search != "" {
 			query = query.Where("name ILIKE ?", "%"+search+"%")
@@ -558,4 +565,65 @@ func GetAdminProducts(db *gorm.DB) echo.HandlerFunc {
 		})
 	}
 
+}
+
+func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		id := c.Param("id")
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Invalid User id", err)
+
+		}
+
+		var user models.User
+		// productModel := db.Model(&models.Products{})
+
+		if err := db.First(&user, "id = ?", uid).Error; err != nil {
+			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
+		}
+
+		// var totalProductListed, activeProduct, soldProducts, flaggedProducts int64
+		totalProductListed, err := utils.CountUserProducts(db, uid)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve user products count", err)
+		}
+		activeProduct, err := utils.CountUserProducts(db, uid, string(models.StatusOngoing))
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve user active products count", err)
+		}
+		soldProducts, err := utils.CountUserProducts(db, uid, string(models.StatusClosed))
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve user closed products count", err)
+		}
+		flaggedProducts, err := utils.CountUserProducts(db, uid, string(models.StatusRejected))
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve user flagged products count", err)
+		}
+
+		userResponse := models.PublicUser{
+			ID:       user.ID,
+			UserName: user.UserName,
+			Email:    user.Email,
+			Role:     string(user.Role),
+			ImageUrl: user.ImageUrl,
+			Location: user.Location,
+			Status:   user.Status,
+		}
+
+		userMetrics := models.UserProductStats{
+			TotalProductsListed: totalProductListed,
+			ActiveProducts:      activeProduct,
+			SoldProducts:        soldProducts,
+			FlaggedProducts:     flaggedProducts,
+		}
+
+		response := models.UserDetailsResponse{
+			UserDetail: userResponse,
+			Metrics:    userMetrics,
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "User Details Retrieved", response)
+
+	}
 }

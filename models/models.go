@@ -192,3 +192,15 @@ type UserDashboardUsers struct {
 	ListedProducts int64      `json:"listed_products"`
 	SoldProducts   int64      `json:"sold_products"`
 }
+
+type UserProductStats struct {
+	TotalProductsListed int64 `json:"total_products_listed"`
+	ActiveProducts      int64 `json:"active_products"`
+	SoldProducts        int64 `json:"sold_products"`
+	FlaggedProducts     int64 `json:"flagged_products"`
+}
+
+type UserDetailsResponse struct {
+	UserDetail PublicUser       `json:"user_details"`
+	Metrics    UserProductStats `json:"metrics"`
+}

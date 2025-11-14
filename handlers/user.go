@@ -36,6 +36,7 @@ func GetUsers(db *gorm.DB) echo.HandlerFunc {
 				Role:     string(u.Role),
 				ImageUrl: u.ImageUrl,
 				Location: u.Location,
+				Status:   u.Status,
 			}
 
 		}
@@ -57,7 +58,17 @@ func GetUserById(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
 		}
 
-		return utils.ResponseSucess(c, http.StatusOK, "User retrieved successfully", echo.Map{"id": user.ID, "user_name": user.UserName, "email": user.Email})
+		response := models.PublicUser{
+			ID:       user.ID,
+			UserName: user.UserName,
+			Email:    user.Email,
+			Role:     string(user.Role),
+			ImageUrl: user.ImageUrl,
+			Location: user.Location,
+			Status:   user.Status,
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "User retrieved successfully", response)
 	}
 
 }
