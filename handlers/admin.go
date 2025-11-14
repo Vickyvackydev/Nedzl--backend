@@ -284,7 +284,7 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 		// count total
 		var total int64
 
-		if err := query.Count(&total).Error; err != nil {
+		if err := query.Count(&total).Where("role = ? AND status = ?", models.RoleUser, status).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve total users count", err)
 		}
 
