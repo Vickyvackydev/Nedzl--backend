@@ -24,10 +24,10 @@ type StoreResponse struct {
 	Region            string            `json:"region"`
 	UserID            uuid.UUID         `json:"user_id"` // needed to link with the currently authenticated user
 	User              models.PublicUser `json:"user"`
-	Status            models.Status     `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
-	CreatedAt         time.Time         `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt         time.Time         `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt         gorm.DeletedAt    `json:"deleted_at" gorm:"index"`
+
+	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 func convertToStoreResponse(settings models.StoreSetting) StoreResponse {
@@ -39,6 +39,7 @@ func convertToStoreResponse(settings models.StoreSetting) StoreResponse {
 		PhoneNumber: settings.User.PhoneNumber,
 		ImageUrl:    settings.User.ImageUrl,
 		Location:    settings.User.Location,
+		Status:      settings.User.Status,
 		CreatedAt:   settings.User.CreatedAt,
 		UpdatedAt:   settings.User.UpdatedAt,
 		DeletedAt:   settings.User.DeletedAt,
