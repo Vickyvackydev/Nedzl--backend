@@ -83,19 +83,18 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		var sections []models.FeaturedSection
-		// Get all existing sections (1–4)
+
+		// Fetch all existing sections
 		if err := db.Order("box_number ASC").Find(&sections).Error; err != nil {
 			return utils.ResponseError(c, 500, "Failed to fetch sections", err)
 		}
 
-		// Prepare response structure for all 4 boxes
 		response := make([]map[string]interface{}, 0)
 
 		for box := 1; box <= 4; box++ {
 			var sec models.FeaturedSection
 			found := false
 
-			// Find section matching box number
 			for _, s := range sections {
 				if s.BoxNumber == box {
 					sec = s
@@ -104,8 +103,8 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 				}
 			}
 
-			// If section does not exist yet → return empty placeholder
 			if !found {
+				// No section created yet
 				response = append(response, map[string]interface{}{
 					"box_number":    box,
 					"category_name": nil,
@@ -115,30 +114,34 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 				continue
 			}
 
-			// Get products for this section
+			// Fetch section-product mapping
 			var secProducts []models.FeaturedSectionProduct
 			db.Where("featured_section_id = ?", sec.ID).
 				Order("created_at ASC").
 				Find(&secProducts)
 
-			// Fetch actual product details for each productID
-			var productDetails []models.Products
 			productIDs := make([]uuid.UUID, 0)
-
 			for _, sp := range secProducts {
 				productIDs = append(productIDs, sp.ProductID)
 			}
 
+			var products []models.Products
+
 			if len(productIDs) > 0 {
-				db.Preload("User").Preload("Images").Preload("NewImages").Where("id IN ?", productIDs).Find(&productDetails)
+				//  PRELOAD USER + IMAGES
+				db.
+					Preload("User").
+					Preload("Images").
+					Preload("NewImages").
+					Where("id IN ?", productIDs).
+					Find(&products)
 			}
 
-			// Assemble section response
 			response = append(response, map[string]interface{}{
 				"box_number":    sec.BoxNumber,
 				"category_name": sec.CategoryName,
 				"description":   sec.Description,
-				"products":      productDetails,
+				"products":      products,
 			})
 		}
 
