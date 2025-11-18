@@ -235,9 +235,9 @@ type FeaturedSection struct {
 
 type FeaturedSectionProduct struct {
 	ID                uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
-	FeaturedSectionID uuid.UUID `gorm:"index"`
+	FeaturedSectionID uuid.UUID `gorm:"type:uuid;index;not null"`
+	ProductID         uuid.UUID `gorm:"type:uuid;not null"`
+	CreatedAt         time.Time
 
-	ProductID uuid.UUID
-	Product   Products `gorm:"foreignKey:ProductID"`
-	CreatedAt time.Time
+	FeaturedSection FeaturedSection `gorm:"constraint:OnDelete:CASCADE;"`
 }
