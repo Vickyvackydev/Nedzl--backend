@@ -235,8 +235,9 @@ type FeaturedSection struct {
 
 type FeaturedSectionProduct struct {
 	ID                uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
-	FeaturedSectionID uuid.UUID
-	ProductID         uuid.UUID
-	Product           Products `gorm:"foreignKey:ProductID"`
-	CreatedAt         time.Time
+	FeaturedSectionID uuid.UUID `gorm:"index"`
+
+	ProductID uuid.UUID
+	Product   Products `gorm:"foreignKey:ProductID"`
+	CreatedAt time.Time
 }

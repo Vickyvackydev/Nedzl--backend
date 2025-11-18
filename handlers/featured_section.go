@@ -3,6 +3,7 @@ package handlers
 import (
 	"api/models"
 	"api/utils"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -13,6 +14,7 @@ import (
 
 func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
+
 		boxNumber, _ := strconv.Atoi(c.Param("box_number"))
 
 		var req struct {
@@ -22,55 +24,58 @@ func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		if err := c.Bind(&req); err != nil {
-			return utils.ResponseError(c, http.StatusBadRequest, "Invalid Request body", err)
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid body", err)
 		}
 
-		// validation rules
-
+		// Validation based on box rules
 		if (boxNumber == 1 || boxNumber == 2) && len(req.ProductIDS) < 3 {
 			return utils.ResponseError(c, http.StatusBadRequest, "This category requires at least 3 products", nil)
 		}
-
 		if (boxNumber == 3 || boxNumber == 4) && len(req.ProductIDS) < 2 {
 			return utils.ResponseError(c, http.StatusBadRequest, "This category requires at least 2 products", nil)
-
 		}
 
 		var section models.FeaturedSection
 
-		if err := db.Where("box_number = ?", boxNumber).First(&section).Error; err != nil {
-			section = models.FeaturedSection{
+		// STEP 1: Try to load by box number
+		err := db.Where("box_number = ?", boxNumber).First(&section).Error
 
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Create new section
+			section = models.FeaturedSection{
 				BoxNumber:    boxNumber,
 				CategoryName: req.CategoryName,
 				Description:  req.Description,
 			}
-			db.Create(&section)
+			if err := db.Create(&section).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create section", err)
+			}
+
+		} else if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Database error", err)
+
 		} else {
-			db.Model(&section).Updates(&models.FeaturedSection{
-				CategoryName: req.CategoryName,
-				Description:  req.Description,
+			// Update existing
+			db.Model(&section).Updates(map[string]any{
+				"category_name": req.CategoryName,
+				"description":   req.Description,
 			})
 		}
 
-		// remove previous product
+		// STEP 2: Delete previous products
+		if err := db.Where("featured_section_id = ?", section.ID).Delete(&models.FeaturedSectionProduct{}).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to clear products", err)
+		}
 
-		db.Where("feature_section_id = ?", section.ID).Delete(&models.FeaturedSectionProduct{})
-
-		// insert new product
-
+		// STEP 3: Insert new products
 		for _, pid := range req.ProductIDS {
 			db.Create(&models.FeaturedSectionProduct{
 				FeaturedSectionID: section.ID,
 				ProductID:         uuid.MustParse(pid),
 			})
-
 		}
-		// RELOAD SECTION WITH PRODUCTS
-		db.Preload("Products.Product").
-			First(&section, "id = ?", section.ID)
 
-		return utils.ResponseSucess(c, http.StatusOK, "Feature section updated", section)
+		return utils.ResponseSucess(c, http.StatusOK, "Featured section updated", section)
 	}
 }
 
