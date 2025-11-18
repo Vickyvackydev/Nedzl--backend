@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -23,7 +22,6 @@ func ConnectDb() {
 
 	fmt.Println("🧩 Connecting to database...")
 
-	// Connect to PostgreSQL
 	db, err := gorm.Open(postgres.Open(dbConnUrl), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 		NowFunc: func() time.Time {
@@ -34,7 +32,6 @@ func ConnectDb() {
 		log.Fatalf("❌ Failed to connect to database: %v", err)
 	}
 
-	// Test the connection
 	sqlDB, err := db.DB()
 	if err != nil {
 		log.Fatalf("❌ Failed to get DB from GORM: %v", err)
@@ -44,18 +41,30 @@ func ConnectDb() {
 		log.Fatalf("❌ Database ping failed: %v", err)
 	}
 
-	// Configure connection pool
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	DB = db
-	fmt.Println("✅ Connected to database successfully")
 
-	// Auto-migrate your models
-	if err := db.AutoMigrate(&models.User{}, &models.Products{}, &models.StoreSetting{}); err != nil {
+	fmt.Println("🧱 Running database extension setup...")
+
+	// ✅ Enable UUID extension safely
+	db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`)
+	db.Exec(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`) // optional but useful
+
+	fmt.Println("🧱 Extensions ready")
+
+	// Auto-migrate models
+	if err := db.AutoMigrate(
+		&models.User{},
+		&models.Products{},
+		&models.StoreSetting{},
+		&models.FeaturedSection{},
+		&models.FeaturedSectionProduct{},
+	); err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}
 
-	fmt.Println("🧱 Database migration completed successfully ✅")
+	fmt.Println("✅ Database migration completed")
 }
