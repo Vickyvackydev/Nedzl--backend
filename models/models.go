@@ -228,6 +228,7 @@ type FeaturedSection struct {
 	BoxNumber    int       `gorm:"unique"`
 	CategoryName string
 	Description  string
+	Products     []FeaturedSectionProduct `gorm:"foreignKey:FeaturedSectionID"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -236,5 +237,6 @@ type FeaturedSectionProduct struct {
 	ID                uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
 	FeaturedSectionID uuid.UUID
 	ProductID         uuid.UUID
+	Product           Products `gorm:"foreignKey:ProductID"`
 	CreatedAt         time.Time
 }

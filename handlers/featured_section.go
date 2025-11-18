@@ -39,7 +39,8 @@ func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 		var section models.FeaturedSection
 
 		if err := db.Where("box_number = ?", boxNumber).First(&section).Error; err != nil {
-			section := models.FeaturedSection{
+			section = models.FeaturedSection{
+
 				BoxNumber:    boxNumber,
 				CategoryName: req.CategoryName,
 				Description:  req.Description,
@@ -54,7 +55,7 @@ func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 
 		// remove previous product
 
-		db.Where("feature_section_id", section.ID).Delete(&models.FeaturedSectionProduct{})
+		db.Where("feature_section_id = ?", section.ID).Delete(&models.FeaturedSectionProduct{})
 
 		// insert new product
 
@@ -65,6 +66,9 @@ func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 			})
 
 		}
+		// RELOAD SECTION WITH PRODUCTS
+		db.Preload("Products.Product").
+			First(&section, "id = ?", section.ID)
 
 		return utils.ResponseSucess(c, http.StatusOK, "Feature section updated", section)
 	}
