@@ -90,7 +90,7 @@ func main() {
 	auth.GET("/admin/products", handlers.GetAdminProducts(db.DB))
 	auth.GET("/admin/user/:id", handlers.GetUserDetails(db.DB))
 	auth.POST("/admin/feature-products/:box_number", handlers.UpdateFeaturedSection(db.DB))
-	auth.GET("/feature-products", handlers.GetFeaturedSections(db.DB))
+	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB))
 
 	// Get port from environment variable (Railway provides PORT)
 	port := os.Getenv("PORT")
