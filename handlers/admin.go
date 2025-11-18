@@ -526,7 +526,7 @@ func GetAdminProducts(db *gorm.DB) echo.HandlerFunc {
 		// Convert to safe responses without passwords
 		var responses []ProductResponse
 		for _, product := range products {
-			responses = append(responses, convertToProductResponse(product))
+			responses = append(responses, ConvertToProductResponse(product))
 		}
 
 		totalPages := int(math.Ceil(float64(total) / float64(limit)))

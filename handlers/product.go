@@ -45,7 +45,7 @@ type ProductResponse struct {
 }
 
 // convertToProductResponse converts a Products model to a safe ProductResponse
-func convertToProductResponse(product models.Products) ProductResponse {
+func ConvertToProductResponse(product models.Products) ProductResponse {
 	publicUser := models.PublicUser{
 		ID:          product.User.ID,
 		UserName:    product.User.UserName,
@@ -198,7 +198,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		// Convert to safe response without password
-		response := convertToProductResponse(products)
+		response := ConvertToProductResponse(products)
 
 		return utils.ResponseSucess(c, http.StatusCreated, "Product created successfully", echo.Map{"products": response})
 	}
@@ -332,7 +332,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to load updated product", err)
 		}
 
-		response := convertToProductResponse(existingProduct)
+		response := ConvertToProductResponse(existingProduct)
 
 		return utils.ResponseSucess(c, http.StatusOK, "Product updated successfully", echo.Map{"data": response})
 	}
@@ -413,7 +413,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		// Convert to safe responses without passwords
 		var responses []ProductResponse
 		for _, product := range products {
-			responses = append(responses, convertToProductResponse(product))
+			responses = append(responses, ConvertToProductResponse(product))
 		}
 
 		totalPages := int(math.Ceil(float64(total) / float64(limit)))
@@ -515,7 +515,7 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 
 		var responses []ProductResponse
 		for _, product := range products {
-			responses = append(responses, convertToProductResponse(product))
+			responses = append(responses, ConvertToProductResponse(product))
 		}
 
 		totalPages := int(math.Ceil(float64(total) / float64(limit)))
@@ -570,7 +570,7 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		// Convert to safe response without password
-		response := convertToProductResponse(product)
+		response := ConvertToProductResponse(product)
 
 		return utils.ResponseSucess(c, http.StatusOK, "Product fetched", echo.Map{"product": response})
 	}
@@ -588,7 +588,7 @@ func GetUserProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		// Convert to safe response without password
-		response := convertToProductResponse(product)
+		response := ConvertToProductResponse(product)
 
 		return utils.ResponseSucess(c, http.StatusOK, "User product fetched successfully", echo.Map{"product": response})
 	}

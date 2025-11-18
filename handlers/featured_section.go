@@ -128,18 +128,23 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 			var products []models.Products
 
 			if len(productIDs) > 0 {
-				//  PRELOAD USER + IMAGES
+
 				db.
 					Preload("User").
 					Where("id IN ?", productIDs).
 					Find(&products)
 			}
 
+			safeResponse := make([]ProductResponse, 0)
+
+			for _, p := range products {
+				safeResponse = append(safeResponse, ConvertToProductResponse(p))
+			}
 			response = append(response, map[string]interface{}{
 				"box_number":    sec.BoxNumber,
 				"category_name": sec.CategoryName,
 				"description":   sec.Description,
-				"products":      products,
+				"products":      safeResponse,
 			})
 		}
 
