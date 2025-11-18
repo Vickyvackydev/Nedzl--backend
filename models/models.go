@@ -222,3 +222,19 @@ type UserDetailsResponse struct {
 	Metrics      UserProductStats  `json:"metrics"`
 	StoreDetails *UserStoreDetails `json:"store_details"`
 }
+
+type FeaturedSection struct {
+	ID           uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
+	BoxNumber    int       `gorm:"unique"`
+	CategoryName string
+	Description  string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type FeaturedSectionProduct struct {
+	ID                uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
+	FeaturedSectionID uuid.UUID
+	ProductID         uuid.UUID
+	CreatedAt         time.Time
+}
