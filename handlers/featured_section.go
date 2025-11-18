@@ -130,7 +130,7 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 			}
 
 			if len(productIDs) > 0 {
-				db.Where("id IN ?", productIDs).Find(&productDetails)
+				db.Preload("User").Preload("Images").Preload("NewImages").Where("id IN ?", productIDs).Find(&productDetails)
 			}
 
 			// Assemble section response

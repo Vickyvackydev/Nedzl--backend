@@ -224,10 +224,10 @@ type UserDetailsResponse struct {
 }
 
 type FeaturedSection struct {
-	ID           uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
-	BoxNumber    int       `gorm:"unique"`
-	CategoryName string
-	Description  string
+	ID           uuid.UUID                `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
+	BoxNumber    int                      `gorm:"unique" json:"box_number"`
+	CategoryName string                   `json:"category_name"`
+	Description  string                   `json:"description"`
 	Products     []FeaturedSectionProduct `gorm:"foreignKey:FeaturedSectionID"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
