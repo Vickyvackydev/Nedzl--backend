@@ -131,8 +131,6 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 				//  PRELOAD USER + IMAGES
 				db.
 					Preload("User").
-					Preload("Images").
-					Preload("NewImages").
 					Where("id IN ?", productIDs).
 					Find(&products)
 			}
