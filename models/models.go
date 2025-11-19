@@ -102,7 +102,7 @@ type Products struct {
 	BrandName         string         `json:"brand_name"`
 	ImageUrls         datatypes.JSON `json:"image_urls"`
 	NewImages         datatypes.JSON `json:"new_images"`
-	Status            Status         `json:"status" gorm:"type:varchar(20);default:'UNDER_REVIEW'"`
+	Status            Status         `json:"status" gorm:"type:varchar(20);default:'ONGOING'"`
 	UserID            uuid.UUID      `json:"user_id" gorm:"type:uuid"`
 	User              User           `json:"user" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	CreatedAt         time.Time      `json:"created_at" gorm:"column:created_at"`
