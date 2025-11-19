@@ -15,8 +15,22 @@ import (
 func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
-		boxNumber, _ := strconv.Atoi(c.Param("box_number"))
+		// Validate box number
+		boxParam := c.Param("box_number")
+		if boxParam == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "box_number parameter is required", nil)
+		}
 
+		boxNumber, err := strconv.Atoi(boxParam)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "box_number must be a valid number", err)
+		}
+
+		if boxNumber < 1 || boxNumber > 4 {
+			return utils.ResponseError(c, http.StatusBadRequest, "box_number must be between 1 and 4", nil)
+		}
+
+		// Parse body
 		var req struct {
 			CategoryName string   `json:"category_name"`
 			Description  string   `json:"description"`
@@ -24,10 +38,28 @@ func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		if err := c.Bind(&req); err != nil {
-			return utils.ResponseError(c, http.StatusBadRequest, "Invalid body", err)
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid body format", err)
 		}
 
-		// Validation based on box rules
+		// Field validation
+		if req.CategoryName == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "category_name is required", nil)
+		}
+		if req.Description == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "description is required", nil)
+		}
+		if len(req.ProductIDS) == 0 {
+			return utils.ResponseError(c, http.StatusBadRequest, "product_ids cannot be empty", nil)
+		}
+
+		// Validate product IDs UUID format
+		for _, pid := range req.ProductIDS {
+			if _, err := uuid.Parse(pid); err != nil {
+				return utils.ResponseError(c, http.StatusBadRequest, "Invalid product ID: "+pid, err)
+			}
+		}
+
+		// Box rules
 		if (boxNumber == 1 || boxNumber == 2) && len(req.ProductIDS) < 3 {
 			return utils.ResponseError(c, http.StatusBadRequest, "This category requires at least 3 products", nil)
 		}
@@ -38,7 +70,7 @@ func UpdateFeaturedSection(db *gorm.DB) echo.HandlerFunc {
 		var section models.FeaturedSection
 
 		// STEP 1: Try to load by box number
-		err := db.Where("box_number = ?", boxNumber).First(&section).Error
+		err = db.Where("box_number = ?", boxNumber).First(&section).Error
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create new section
