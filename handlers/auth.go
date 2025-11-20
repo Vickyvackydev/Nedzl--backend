@@ -125,7 +125,7 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 
 		if err := db.Where("email =?", req.Email).First(&user).Error; err != nil {
 			// c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
-			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid request body", err)
+			return utils.ResponseError(c, http.StatusUnauthorized, "Account does not exist", err)
 		}
 		// check if password matches existing one in database
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
