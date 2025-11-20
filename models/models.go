@@ -54,6 +54,17 @@ func IsValidStatus(s Status) bool {
 	}
 
 }
+func IsValidUserStatus(s Status) bool {
+	switch s {
+	case UserActive, UserDeactivated, UserSuspended:
+		return true
+
+	default:
+		return false
+
+	}
+
+}
 
 type RegisterRequest struct {
 	UserName    string `json:"user_name"`

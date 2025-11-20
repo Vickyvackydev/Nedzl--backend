@@ -75,11 +75,12 @@ func main() {
 	auth.GET("/products/:id/user", handlers.GetUserProduct(db.DB))
 	auth.DELETE("/products/:id/user", handlers.DeleteUserProduct(db.DB))
 	auth.DELETE("/products/:id", handlers.DeleteUserProduct(db.DB))
-	auth.PATCH("/products/:id", handlers.CloseProduct(db.DB))
+	auth.PATCH("/products/update/:id/status", handlers.UpdateProductStatus(db.DB))
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)
 	auth.PATCH("/users/update", handlers.UpdateUser(db.DB))
+	auth.PATCH("/users/update/:id/status", handlers.UpdateUserStatus(db.DB))
 	auth.POST("/store-settings", handlers.CreateStoreSettings(db.DB))
 
 	auth.GET("/users", handlers.GetUsers(db.DB))
