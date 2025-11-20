@@ -43,6 +43,17 @@ func IsValidRole(r Role) bool {
 	}
 
 }
+func IsValidStatus(s Status) bool {
+	switch s {
+	case StatusOngoing, StatusRejected, StatusReview, StatusClosed:
+		return true
+
+	default:
+		return false
+
+	}
+
+}
 
 type RegisterRequest struct {
 	UserName    string `json:"user_name"`
