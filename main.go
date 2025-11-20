@@ -74,6 +74,8 @@ func main() {
 	auth.GET("/products/user", handlers.GetUserProducts(db.DB))
 	auth.GET("/products/:id/user", handlers.GetUserProduct(db.DB))
 	auth.DELETE("/products/:id/user", handlers.DeleteUserProduct(db.DB))
+	auth.DELETE("/products/:id", handlers.DeleteUserProduct(db.DB))
+	auth.PATCH("/products/:id", handlers.CloseProduct(db.DB))
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)
