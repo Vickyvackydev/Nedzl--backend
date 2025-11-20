@@ -209,7 +209,7 @@ func GetUserDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.UserDeactivated, startDate, now).Count(&deactivatedUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count deactivated users", err)
 		}
-		if err := userModel.Where("role = ?", models.RoleUser).Count(&totalSellers).Error; err != nil {
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role =?", startDate, now, models.RoleUser).Count(&totalSellers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count registered users", err)
 		}
 
