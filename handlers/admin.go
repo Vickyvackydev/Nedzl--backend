@@ -664,3 +664,19 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 
 	}
 }
+
+
+func DeleteAdminProduct(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+	
+		id := c.Param("id")
+
+		var product models.Products
+
+		if err := db.Where("id =?", id).Delete(&product).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete product", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Product deleted successfully", nil)
+	}
+}
