@@ -19,7 +19,7 @@ const (
 	StatusOngoing  Status = "ONGOING"
 	StatusReview   Status = "UNDER_REVIEW"
 	StatusClosed   Status = "CLOSED"
-	StatusRejected Status = "REJCTED"
+	StatusRejected Status = "REJECTED"
 )
 const (
 	UserActive      Status = "ACTIVE"
@@ -130,6 +130,7 @@ type Products struct {
 	CreatedAt         time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt         time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt         gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	ClosedAt          *time.Time     `gorm:"index"`
 }
 
 type StoreSetting struct {
