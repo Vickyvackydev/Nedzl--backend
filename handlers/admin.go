@@ -16,7 +16,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// --- Helper: Safe % Growth Calculation ---
 func calculateGrowthRate(previous, current int64) float64 {
 	if previous == 0 && current == 0 {
 		return 0
@@ -28,66 +27,113 @@ func calculateGrowthRate(previous, current int64) float64 {
 	return math.Round(change*100) / 100 // Round to 2 decimals
 }
 
+// parseStartEnd tries to parse ?start and ?end in YYYY-MM-DD format.
+// If not provided, it derives start/end from period (7d, 1m, 1yr) or defaults to calendar year.
+func parseStartEnd(c echo.Context) (start time.Time, end time.Time, err error) {
+	now := time.Now().UTC()
+	// Try explicit start/end first
+	startParam := c.QueryParam("start")
+	endParam := c.QueryParam("end")
+	if startParam != "" && endParam != "" {
+		start, err = time.ParseInLocation("2006-01-02", startParam, time.UTC)
+		if err != nil {
+			return time.Time{}, time.Time{}, err
+		}
+		// set start to midnight UTC
+		start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+
+		end, err = time.ParseInLocation("2006-01-02", endParam, time.UTC)
+		if err != nil {
+			return time.Time{}, time.Time{}, err
+		}
+		// set end to end of day UTC
+		end = time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC)
+		return start, end, nil
+	}
+
+	// fallback to period param
+	period := c.QueryParam("period")
+	yearParam := c.QueryParam("year")
+	currentYear := now.Year()
+	if yearParam != "" {
+		if y, perr := strconv.Atoi(yearParam); perr == nil {
+			currentYear = y
+		}
+	}
+
+	switch period {
+	case "7d":
+		end = now.UTC()
+		start = end.AddDate(0, 0, -7)
+		return start, end, nil
+	case "1m":
+		end = now.UTC()
+		start = end.AddDate(0, -1, 0)
+		return start, end, nil
+	case "1yr":
+		end = now.UTC()
+		start = end.AddDate(-1, 0, 0)
+		return start, end, nil
+	default:
+		// default to calendar year of currentYear
+		start = time.Date(currentYear, 1, 1, 0, 0, 0, 0, time.UTC)
+		end = time.Date(currentYear, 12, 31, 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC)
+		return start, end, nil
+	}
+}
+
+// --- Admin Dashboard (Products + Users) ---
 func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		now := time.Now()
-		period := c.QueryParam("period")
+		now := time.Now().UTC()
 
-		// Optional year override
-		currentYear := now.Year()
-		if yearParam := c.QueryParam("year"); yearParam != "" {
-			if y, err := strconv.Atoi(yearParam); err == nil {
-				currentYear = y
-			}
+		startDate, endDate, err := parseStartEnd(c)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid start/end date format. Use YYYY-MM-DD", err)
 		}
 
-		var startDate, prevStart, prevEnd time.Time
-		switch period {
-		case "7d":
-			startDate = now.AddDate(0, 0, -7)
-			prevEnd = startDate
-			prevStart = startDate.AddDate(0, 0, -7)
-		case "1m":
-			startDate = now.AddDate(0, -1, 0)
-			prevEnd = startDate
-			prevStart = startDate.AddDate(0, -1, 0)
-		case "1yr":
-			startDate = now.AddDate(-1, 0, 0)
-			prevEnd = startDate
-			prevStart = startDate.AddDate(-1, 0, 0)
-		default:
-			// Default to current year
-			startDate = time.Date(currentYear, 1, 1, 0, 0, 0, 0, now.Location())
-			prevEnd = startDate
-			prevStart = time.Date(currentYear-1, 1, 1, 0, 0, 0, 0, now.Location())
-		}
+		// determine previous period (same length right before current start)
+		periodLen := endDate.Sub(startDate)
+		prevEnd := startDate.Add(-time.Nanosecond)
+		prevStart := prevEnd.Add(-periodLen).Add(time.Nanosecond)
 
+		// prepare counters
 		var (
-			totalProducts, activeProducts, flaggedProducts, closedProducts, totalUsers                int64
-			prevProducts, prevActiveProducts, prevFlaggedProducts, prevClosedProducts, prevTotalUsers int64
+			totalProducts, productsNewInPeriod                          int64
+			activeProducts, closedProducts, flaggedProducts             int64
+			prevTotalProducts, prevProductsNewInPrevPeriod              int64
+			prevActiveProducts, prevClosedProducts, prevFlaggedProducts int64
 		)
 
 		productModel := db.Model(&models.Products{})
 		userModel := db.Model(&models.User{})
 
-		// --- Current period queries ---
-		// Count products created in this period
-		if err := productModel.Where("created_at BETWEEN ? AND ?", startDate, now).Count(&totalProducts).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count total products", err)
+		// --- Products: totals & new in period ---
+		// total products ever created in period (new products)
+		if err := productModel.Where("created_at BETWEEN ? AND ?", startDate, endDate).Count(&productsNewInPeriod).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count new products in period", err)
 		}
 
-		// Count ALL products with specific status (not filtered by date)
+		// total products overall by status (lifetime counts)
 		if err := productModel.Where("status = ?", models.StatusOngoing).Count(&activeProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count active products", err)
 		}
+		// closed (lifetime)
 		if err := productModel.Where("status = ?", models.StatusClosed).Count(&closedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count closed products", err)
 		}
+		// flagged/rejected (lifetime)
 		if err := productModel.Where("status = ?", models.StatusRejected).Count(&flaggedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count flagged products", err)
 		}
-		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", startDate, now, models.RoleUser).Count(&totalUsers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count registered users", err)
+
+		// total products in current period (for "TotalProductsListed" metric we interpret as new products in period)
+		totalProducts = productsNewInPeriod
+
+		// --- Users: new users in period ---
+		var totalUsersInPeriod int64
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", startDate, endDate, models.RoleUser).Count(&totalUsersInPeriod).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count registered users in period", err)
 		}
 
 		stats := models.DashboardStats{
@@ -95,62 +141,85 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 			ActiveProducts:          activeProducts,
 			FlaggedReportedProducts: flaggedProducts,
 			ClosedSoldProducts:      closedProducts,
-			TotalRegisteredSellers:  totalUsers,
+			TotalRegisteredSellers:  totalUsersInPeriod,
 		}
 
-		// --- Previous period for growth ---
-		if err := productModel.Where("created_at BETWEEN ? AND ?", prevStart, prevEnd).Count(&prevProducts).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous total products", err)
+		// --- Previous period counts for growth ---
+		if err := productModel.Where("created_at BETWEEN ? AND ?", prevStart, prevEnd).Count(&prevProductsNewInPrevPeriod).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous new products", err)
 		}
 
-		// For growth: count products with status that were CREATED in previous period
-		// This shows how many products entered each status during that time
+		// For status-based growth — we attempt to count how many products entered that status during the period.
+		// closed products -> use closed_at (preferred) otherwise fallback to created_at if closed_at is null
+		if err := productModel.Where("(status = ? AND closed_at BETWEEN ? AND ?) OR (status = ? AND closed_at IS NULL AND created_at BETWEEN ? AND ?)",
+			models.StatusClosed, startDate, endDate, models.StatusClosed, startDate, endDate).Count(&closedProducts).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count closed products in period", err)
+		}
+		if err := productModel.Where("(status = ? AND closed_at BETWEEN ? AND ?) OR (status = ? AND closed_at IS NULL AND created_at BETWEEN ? AND ?)",
+			models.StatusClosed, prevStart, prevEnd, models.StatusClosed, prevStart, prevEnd).Count(&prevClosedProducts).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count closed products in previous period", err)
+		}
+
+		// For ongoing and rejected statuses we can't reliably know "entered status at" time without an audit log.
+		// We'll approximate "entered in period" by checking current status + created_at in period (reasonable fallback).
+		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusOngoing, startDate, endDate).Count(&activeProducts).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count ongoing products in period", err)
+		}
 		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusOngoing, prevStart, prevEnd).Count(&prevActiveProducts).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous active products", err)
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count ongoing products in previous period", err)
 		}
-		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusClosed, prevStart, prevEnd).Count(&prevClosedProducts).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous closed products", err)
+
+		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, startDate, endDate).Count(&flaggedProducts).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count flagged products in period", err)
 		}
 		if err := productModel.Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, prevStart, prevEnd).Count(&prevFlaggedProducts).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous flagged products", err)
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count flagged products in previous period", err)
 		}
+
+		// User previous period counts
 		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", prevStart, prevEnd, models.RoleUser).Count(&prevTotalUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous registered users", err)
 		}
 
+		// --- Build growth object ---
 		growth := models.DashboardGrowth{
-			TotalProductsListed:     calculateGrowthRate(prevProducts, totalProducts),
+			TotalProductsListed:     calculateGrowthRate(prevProductsNewInPrevPeriod, productsNewInPeriod),
 			ActiveProducts:          calculateGrowthRate(prevActiveProducts, activeProducts),
-			FlaggedReportedProducts: calculateGrowthRate(prevFlaggedProducts, flaggedProducts),
 			ClosedSoldProducts:      calculateGrowthRate(prevClosedProducts, closedProducts),
-			TotalRegisteredSellers:  calculateGrowthRate(prevTotalUsers, totalUsers),
+			FlaggedReportedProducts: calculateGrowthRate(prevFlaggedProducts, flaggedProducts),
+			TotalRegisteredSellers:  calculateGrowthRate(prevTotalUsers, totalUsersInPeriod),
 		}
 
-		// --- Monthly metrics (Jan–Dec) ---
+		// --- Monthly metrics: use currentYear (or year param if provided) ---
+		yearParam := c.QueryParam("year")
+		currentYear := now.Year()
+		if yearParam != "" {
+			if y, perr := strconv.Atoi(yearParam); perr == nil {
+				currentYear = y
+			}
+		}
+
 		var signupMetrics, soldMetrics []models.MonthlyMetric
-		for i := 1; i <= 12; i++ {
-			month := time.Month(i)
+		for m := 1; m <= 12; m++ {
+			month := time.Month(m)
 			monthName := month.String()[:3]
-			formattedMonth := fmt.Sprintf("%s %d", monthName, currentYear)
+			formatted := fmt.Sprintf("%s %d", monthName, currentYear)
 
-			var signups, sold int64
+			var signups int64
+			var sold int64
 
-			// Count user signups by month
-			if err := userModel.Where("EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? AND role = ?", i, currentYear, models.RoleUser).Count(&signups).Error; err != nil {
+			if err := userModel.Where("EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? AND role = ?", m, currentYear, models.RoleUser).Count(&signups).Error; err != nil {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch monthly signups", err)
 			}
 
-			// Count sold products by when they were closed
-			// Use closed_at if available, otherwise fall back to created_at for closed products
-			if err := productModel.Where("EXTRACT(MONTH FROM closed_at) = ? AND EXTRACT(YEAR FROM closed_at) = ? AND status = ?", i, currentYear, models.StatusClosed).Count(&sold).Error; err != nil {
-				// Fallback: if closed_at is null or query fails, try with created_at
-				if err := productModel.Where("EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? AND status = ?", i, currentYear, models.StatusClosed).Count(&sold).Error; err != nil {
-					return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch monthly sales", err)
-				}
+			// count closed products by closed_at month, fallback to created_at if closed_at is null
+			if err := productModel.Where("(EXTRACT(MONTH FROM closed_at) = ? AND EXTRACT(YEAR FROM closed_at) = ? AND status = ?) OR (closed_at IS NULL AND EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? AND status = ?)",
+				m, currentYear, models.StatusClosed, m, currentYear, models.StatusClosed).Count(&sold).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch monthly sales", err)
 			}
 
-			signupMetrics = append(signupMetrics, models.MonthlyMetric{Month: formattedMonth, Value: signups})
-			soldMetrics = append(soldMetrics, models.MonthlyMetric{Month: formattedMonth, Value: sold})
+			signupMetrics = append(signupMetrics, models.MonthlyMetric{Month: formatted, Value: signups})
+			soldMetrics = append(soldMetrics, models.MonthlyMetric{Month: formatted, Value: sold})
 		}
 
 		metrics := models.DashboardMetrics{
@@ -160,98 +229,77 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 
 		response := models.DashboardResponse{
 			Stats:   stats,
-			Metrics: metrics,
 			Growth:  growth,
+			Metrics: metrics,
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "Dashboard Overview Retrieved", response)
 	}
 }
 
+// --- Seller/User Dashboard (Users metrics) ---
 func GetUserDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		now := time.Now()
-		period := c.QueryParam("period")
-
-		// Optional year override
-		currentYear := now.Year()
-		if yearParam := c.QueryParam("year"); yearParam != "" {
-			if y, err := strconv.Atoi(yearParam); err == nil {
-				currentYear = y
-			}
+		now := time.Now().UTC()
+		startDate, endDate, err := parseStartEnd(c)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid start/end date format. Use YYYY-MM-DD", err)
 		}
 
-		var startDate, prevStart, prevEnd time.Time
-		switch period {
-		case "7d":
-			startDate = now.AddDate(0, 0, -7)
-			prevEnd = startDate
-			prevStart = startDate.AddDate(0, 0, -7)
-		case "1m":
-			startDate = now.AddDate(0, -1, 0)
-			prevEnd = startDate
-			prevStart = startDate.AddDate(0, -1, 0)
-		case "1yr":
-			startDate = now.AddDate(-1, 0, 0)
-			prevEnd = startDate
-			prevStart = startDate.AddDate(-1, 0, 0)
-		default:
-			// Default to current year
-			startDate = time.Date(currentYear, 1, 1, 0, 0, 0, 0, now.Location())
-			prevEnd = startDate
-			prevStart = time.Date(currentYear-1, 1, 1, 0, 0, 0, 0, now.Location())
-		}
-
-		var (
-			totalSellers, activeSellers, suspendedSellers, deactivatedUsers        int64
-			prevSellers, prevActiveUsers, prevSuspendedUsers, prevDeactivatedUsers int64
-		)
+		periodLen := endDate.Sub(startDate)
+		prevEnd := startDate.Add(-time.Nanosecond)
+		prevStart := prevEnd.Add(-periodLen).Add(time.Nanosecond)
 
 		userModel := db.Model(&models.User{})
 
-		// --- Current period queries ---
-		// Total sellers created in period
-		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", startDate, now, models.RoleUser).Count(&totalSellers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count total sellers", err)
+		var (
+			totalSellersInPeriod, activeSellers, suspendedSellers, deactivatedUsers    int64
+			prevTotalSellers, prevActiveSellers, prevSuspendedSellers, prevDeactivated int64
+		)
+
+		// Total sellers created in the period
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", startDate, endDate, models.RoleUser).Count(&totalSellersInPeriod).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count total sellers in period", err)
 		}
 
-		// Count ALL users with specific status (not filtered by creation date)
+		// Current counts by status (lifetime current state)
 		if err := userModel.Where("status = ? AND role = ?", models.UserActive, models.RoleUser).Count(&activeSellers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count active sellers", err)
 		}
 		if err := userModel.Where("status = ? AND role = ?", models.UserSuspended, models.RoleUser).Count(&suspendedSellers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count suspended users", err)
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count suspended sellers", err)
 		}
 		if err := userModel.Where("status = ? AND role = ?", models.UserDeactivated, models.RoleUser).Count(&deactivatedUsers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count deactivated users", err)
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count deactivated sellers", err)
+		}
+
+		// Previous period counts (for growth). Because we may not have status-change timestamps,
+		// we approximate "entered status during prev period" by users with that current status AND created in prev period.
+		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", prevStart, prevEnd, models.RoleUser).Count(&prevTotalSellers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous total sellers", err)
+		}
+		if err := userModel.Where("status = ? AND role = ? AND created_at BETWEEN ? AND ?", models.UserActive, models.RoleUser, prevStart, prevEnd).Count(&prevActiveSellers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous active sellers", err)
+		}
+		if err := userModel.Where("status = ? AND role = ? AND created_at BETWEEN ? AND ?", models.UserSuspended, models.RoleUser, prevStart, prevEnd).Count(&prevSuspendedSellers).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous suspended sellers", err)
+		}
+		if err := userModel.Where("status = ? AND role = ? AND created_at BETWEEN ? AND ?", models.UserDeactivated, models.RoleUser, prevStart, prevEnd).Count(&prevDeactivated).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous deactivated sellers", err)
 		}
 
 		stats := models.UserDashboardStats{
-			TotalSellers:     totalSellers,
+			TotalSellers:     totalSellersInPeriod,
 			ActiveSellers:    activeSellers,
 			SuspendedUsers:   suspendedSellers,
 			DeactivatedUsers: deactivatedUsers,
 		}
 
-		// --- Previous period for growth ---
-		if err := userModel.Where("created_at BETWEEN ? AND ? AND role = ?", prevStart, prevEnd, models.RoleUser).Count(&prevSellers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous total sellers", err)
-		}
-		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ? AND role = ?", models.UserActive, prevStart, prevEnd, models.RoleUser).Count(&prevActiveUsers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous active sellers", err)
-		}
-		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ? AND role = ?", models.UserSuspended, prevStart, prevEnd, models.RoleUser).Count(&prevSuspendedUsers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous suspended users", err)
-		}
-		if err := userModel.Where("status = ? AND created_at BETWEEN ? AND ? AND role = ?", models.UserDeactivated, prevStart, prevEnd, models.RoleUser).Count(&prevDeactivatedUsers).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count previous deactivated users", err)
-		}
-
 		growth := models.UserDashboardGrowth{
-			TotalSellers:     calculateGrowthRate(prevSellers, totalSellers),
-			ActiveSellers:    calculateGrowthRate(prevActiveUsers, activeSellers),
-			SuspendedUsers:   calculateGrowthRate(prevSuspendedUsers, suspendedSellers),
-			DeactivatedUsers: calculateGrowthRate(prevDeactivatedUsers, deactivatedUsers),
+			TotalSellers:     calculateGrowthRate(prevTotalSellers, totalSellersInPeriod),
+			ActiveSellers:    calculateGrowthRate(prevActiveSellers, activeSellers),
+			SuspendedUsers:   calculateGrowthRate(prevSuspendedSellers, suspendedSellers),
+			DeactivatedUsers: calculateGrowthRate(prevDeactivated, deactivatedUsers),
 		}
 
 		response := models.UserDashboardResponse{
@@ -665,10 +713,9 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 	}
 }
 
-
 func DeleteAdminProduct(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-	
+
 		id := c.Param("id")
 
 		var product models.Products
