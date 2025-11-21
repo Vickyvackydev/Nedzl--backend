@@ -221,10 +221,10 @@ func GetUserDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		if err := userModel.Where("status = ? AND role = ?", models.UserActive, models.RoleUser).Count(&activeSellers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count active sellers", err)
 		}
-		if err := userModel.Where("status = ?", models.UserSuspended).Count(&suspendedSellers).Error; err != nil {
+		if err := userModel.Where("status = ? AND role = ?", models.UserSuspended, models.RoleUser).Count(&suspendedSellers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count suspended users", err)
 		}
-		if err := userModel.Where("status = ?", models.UserDeactivated).Count(&deactivatedUsers).Error; err != nil {
+		if err := userModel.Where("status = ? AND role = ?", models.UserDeactivated, models.RoleUser).Count(&deactivatedUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count deactivated users", err)
 		}
 
