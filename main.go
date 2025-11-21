@@ -95,7 +95,7 @@ func main() {
 	auth.POST("/admin/feature-products/:box_number", handlers.UpdateFeaturedSection(db.DB))
 	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB))
 	auth.GET("/admin/feature-products", handlers.GetFeaturedSections(db.DB))
-	auth.GET("/admin/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
+	auth.DELETE("/admin/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
 
 	// Get port from environment variable (Railway provides PORT)
 	port := os.Getenv("PORT")
