@@ -79,6 +79,7 @@ func main() {
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)
+	
 	auth.PATCH("/users/update", handlers.UpdateUser(db.DB))
 	auth.PATCH("/users/update/:id/status", handlers.UpdateUserStatus(db.DB))
 	auth.POST("/store-settings", handlers.CreateStoreSettings(db.DB))
