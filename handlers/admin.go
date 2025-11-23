@@ -80,16 +80,14 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count active products", err)
 		}
 
-
 		if err := db.Model(&models.Products{}).Where("status = ?", models.StatusClosed).Count(&closedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count closed products", err)
 		}
 
-	
 		if err := db.Model(&models.Products{}).Where("status = ?", models.StatusRejected).Count(&flaggedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count flagged products", err)
 		}
-		if err := db.Model(&models.User{}) .Where("created_at BETWEEN ? AND ? AND role = ?", startDate, now, models.RoleUser).Count(&totalUsers).Error; err != nil {
+		if err := db.Model(&models.User{}).Where("created_at BETWEEN ? AND ? AND role = ?", startDate, now, models.RoleUser).Count(&totalUsers).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count registered users", err)
 		}
 
@@ -260,13 +258,11 @@ func GetUserDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 
 func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		// Base query
 		query := db.Model(&models.User{})
+
 		page, _ := strconv.Atoi(c.QueryParam("page"))
 		limit, _ := strconv.Atoi(c.QueryParam("limit"))
-
-		name := c.QueryParam("name")
-		phone := c.QueryParam("phone_number")
-		status := c.QueryParam("status")
 		if page < 1 {
 			page = 1
 		}
@@ -275,53 +271,56 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 		}
 		offset := (page - 1) * limit
 
-		var users []models.User
+		// Filters
+		name := c.QueryParam("name")
+		phone := c.QueryParam("phone_number")
+		status := c.QueryParam("status")
 
+		// Apply search filters
 		if name != "" {
-			query = query.Where("user_name ILIKE = ?", "%"+name+"%")
+			query = query.Where("user_name ILIKE ?", "%"+name+"%")
 		}
 
 		if phone != "" {
-			query = query.Where("phone_number ILIKE = ?", "%"+phone+"%")
-
+			query = query.Where("phone_number ILIKE ?", "%"+phone+"%")
 		}
 
 		if status != "" {
 			query = query.Where("status = ?", status)
 		}
 
+		// Only normal users
 		query = query.Where("role = ?", models.RoleUser)
-		// count total
 
+		// Count total before pagination
 		var total int64
-
 		if err := query.Count(&total).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve total users count", err)
 		}
 
-		// arrange newer data above older ones
-		query = query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&users)
+		// Fetch paginated users
+		var users []models.User
+		if err := query.
+			Offset(offset).
+			Limit(limit).
+			Order("created_at DESC").
+			Find(&users).Error; err != nil {
 
-		// calculate total pages
-
-		totalPages := int(math.Ceil(float64(total) / float64(limit)))
-
-		if err := query.Where("role = ?", models.RoleUser).Find(&users).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve users", err)
-
 		}
 
+		// Build response object
 		var result []models.UserDashboardUsers
-
 		for _, user := range users {
-
 			var listedCount, soldCount int64
-			if err := db.Model(&models.Products{}).Where("user_id = ?", user.ID).Count(&listedCount).Error; err != nil {
-				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrive user product counts", err)
-			}
-			if err := db.Model(&models.Products{}).Where("user_id = ? AND status = ?", user.ID, models.StatusClosed).Count(&soldCount).Error; err != nil {
-				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrive user sold product counts", err)
-			}
+
+			db.Model(&models.Products{}).
+				Where("user_id = ?", user.ID).
+				Count(&listedCount)
+
+			db.Model(&models.Products{}).
+				Where("user_id = ? AND status = ?", user.ID, models.StatusClosed).
+				Count(&soldCount)
 
 			result = append(result, models.UserDashboardUsers{
 				User: models.PublicUser{
@@ -340,8 +339,9 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 				ListedProducts: listedCount,
 				SoldProducts:   soldCount,
 			})
-
 		}
+
+		totalPages := int(math.Ceil(float64(total) / float64(limit)))
 
 		return utils.ResponseSucess(c, http.StatusOK, "Users fetched successfully", echo.Map{
 			"data":  result,
@@ -352,7 +352,6 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 				"totalPages": totalPages,
 			},
 		})
-
 	}
 }
 
@@ -376,11 +375,11 @@ func GetActiveProductsUsers(db *gorm.DB) echo.HandlerFunc {
 		var users []models.User
 
 		if name != "" {
-			query = query.Where("name ILIKE = ?", "%"+name+"%")
+			query = query.Where("name ILIKE  ?", "%"+name+"%")
 		}
 
 		if phone != "" {
-			query = query.Where("phone_number ILIKE = ?", "%"+phone+"%")
+			query = query.Where("phone_number ILIKE  ?", "%"+phone+"%")
 
 		}
 
