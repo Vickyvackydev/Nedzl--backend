@@ -3,6 +3,7 @@ package main
 import (
 	"api/db"
 	"api/handlers"
+	"fmt"
 
 	jwtMiddleware "api/middleware"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/resend/resend-go/v3"
 
 	_ "github.com/lib/pq"
 )
@@ -26,6 +28,23 @@ func main() {
 		log.Println("✅ .env file loaded successfully")
 	}
 	db.ConnectDb()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+
+	// Send
+	params := &resend.SendEmailRequest{
+		From:    "Acme <onboarding@resend.dev>",
+		To:      []string{"delivered@resend.dev"},
+		Subject: "Hello world",
+		Html:    "<strong>It works!</strong>",
+	}
+
+	sent, err := client.Emails.Send(params)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sent.Id)
 
 	// Echo instance
 
@@ -79,7 +98,7 @@ func main() {
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)
-	
+
 	auth.PATCH("/users/update", handlers.UpdateUser(db.DB))
 	auth.PATCH("/users/update/:id/status", handlers.UpdateUserStatus(db.DB))
 	auth.POST("/store-settings", handlers.CreateStoreSettings(db.DB))
