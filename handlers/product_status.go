@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"api/emails"
 	"api/models"
 	"api/utils"
 	"time"
@@ -15,6 +16,7 @@ func UpdateProductStatus(db *gorm.DB) echo.HandlerFunc {
 
 		var body struct {
 			Status string `json:"status"`
+			Reason string `json:"reason"`
 		}
 
 		if err := c.Bind(&body); err != nil {
@@ -23,6 +25,11 @@ func UpdateProductStatus(db *gorm.DB) echo.HandlerFunc {
 
 		if body.Status == "" || !models.IsValidStatus(models.Status(body.Status)) {
 			return utils.ResponseError(c, 400, "Invalid status", nil)
+		}
+		var product models.Products
+
+		if err := db.Preload("User").Where("id = ?", id).First(&product).Error; err != nil {
+			return utils.ResponseError(c, 404, "Product not found", err)
 		}
 
 		// Prepare update data
@@ -40,6 +47,10 @@ func UpdateProductStatus(db *gorm.DB) echo.HandlerFunc {
 		result := db.Model(&models.Products{}).Where("id = ?", id).Updates(updateData)
 		if result.Error != nil {
 			return utils.ResponseError(c, 500, "Failed to update product status", result.Error)
+		}
+
+		if models.Status(body.Status) == models.StatusRejected {
+			go emails.SendProductDeactivationEmail(product.User.Email, product.User.UserName, product.Name, body.Reason)
 		}
 
 		if result.RowsAffected == 0 {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"api/emails"
 	"api/models"
 	"api/utils"
 
@@ -24,10 +25,19 @@ func UpdateUserStatus(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, 400, "Invalid status", nil)
 		}
 
+		var user models.User
+
+		if err := db.Model(&user).Where("id = ?", id).First(&user).Error; err != nil {
+			return utils.ResponseError(c, 404, "User not found", err)
+		}
+
 		// Update status directly
-		result := db.Model(&models.User{}).Where("id = ?", id).Update("status", body.Status)
+		result := db.Model(&user).Update("status", body.Status)
 		if result.Error != nil {
 			return utils.ResponseError(c, 500, "Failed to update product status", result.Error)
+		}
+		if models.Status(body.Status) == models.StatusRejected {
+			go emails.SendUserDeactivationEmail(user.Email, user.UserName)
 		}
 
 		if result.RowsAffected == 0 {

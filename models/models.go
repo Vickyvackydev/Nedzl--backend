@@ -94,18 +94,20 @@ type PublicUser struct {
 }
 
 type User struct {
-	ID          uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
-	UserName    string         `json:"user_name"`
-	Email       string         `json:"email"`
-	PhoneNumber string         `json:"phone_number"`
-	Role        Role           `json:"role"`
-	Password    string         `json:"password"`
-	ImageUrl    string         `json:"image_url"`
-	Location    string         `json:"location"`
-	Status      Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
-	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	ID            uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
+	UserName      string         `json:"user_name"`
+	Email         string         `json:"email"`
+	PhoneNumber   string         `json:"phone_number"`
+	Role          Role           `json:"role"`
+	Password      string         `json:"password"`
+	ImageUrl      string         `json:"image_url"`
+	Location      string         `json:"location"`
+	EmailVerified bool           `gorm:"default:false" json:"email_verified"`
+	EmailToken    string         `gorm:"size:255" json:"email_token"`
+	Status        Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
+	CreatedAt     time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt     time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt     gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 type Products struct {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"api/emails"
 	"api/models"
 	"api/utils"
 
@@ -10,12 +11,19 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 var jwtSecretKey = []byte("supersecretkey")
+
+func generateVerificationToken() (string, string) {
+	raw := uuid.NewString()
+	hashed, _ := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.DefaultCost)
+	return raw, string(hashed)
+}
 
 // func RegisterUser(db *gorm.DB) echo.HandlerFunc {
 // 	return func(c echo.Context) error {
@@ -90,18 +98,23 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to hash password", err)
 		}
 
+		_, token := generateVerificationToken()
+
 		user := models.User{
-			UserName:    req.UserName,
-			Email:       req.Email,
-			Role:        req.Role,
-			PhoneNumber: req.PhoneNumber,
-			Password:    string(hash),
+			UserName:      req.UserName,
+			Email:         req.Email,
+			Role:          req.Role,
+			PhoneNumber:   req.PhoneNumber,
+			Password:      string(hash),
+			EmailToken:    token,
+			EmailVerified: false,
 		}
 
 		if err := db.Create(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}
 
+		go emails.SendVerificationMail(req.Email, req.UserName, token)
 		return utils.ResponseSucess(c, http.StatusCreated, "Registered successfully", map[string]string{
 			"user_name":    user.UserName,
 			"email":        user.Email,
@@ -125,8 +138,14 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 
 		if err := db.Where("email =?", req.Email).First(&user).Error; err != nil {
 			// c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
-			return utils.ResponseError(c, http.StatusUnauthorized, "Account does not exist", err)
+			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid login credential", err)
 		}
+
+		// checks if email is verified
+		if !user.EmailVerified {
+			return utils.ResponseError(c, http.StatusForbidden, "Please verify your emai", nil)
+		}
+
 		// check if password matches existing one in database
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 			// return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
