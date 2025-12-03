@@ -49,7 +49,7 @@ func SendUserDeactivationEmail(to, username string) error {
                 <h2 style="color:#07B463;text-align:center;">NedZl</h2>
                 <p>Hello %s,</p>
                 <p>Your NedZl account has been <strong style="color:#07B463;">deactivated</strong>.</p>
-                <p>If this is an error, contact support.</p>
+                <p>If this is an error, contact support team.</p>
 
                 <a href="mailto:support@nedzl.com"
                    style="background:#07B463;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;">
