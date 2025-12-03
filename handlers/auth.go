@@ -143,7 +143,7 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 
 		// checks if email is verified
 		if !user.EmailVerified {
-			return utils.ResponseError(c, http.StatusForbidden, "Please verify your emai", nil)
+			return utils.ResponseError(c, http.StatusForbidden, "Please verify your email", nil)
 		}
 
 		// check if password matches existing one in database
