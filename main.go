@@ -3,7 +3,8 @@ package main
 import (
 	"api/db"
 	"api/handlers"
-	"fmt"
+
+	// "fmt"
 
 	jwtMiddleware "api/middleware"
 	"os"
@@ -14,7 +15,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/resend/resend-go/v3"
+
+	// "github.com/resend/resend-go/v3"
 
 	_ "github.com/lib/pq"
 )
@@ -27,24 +29,26 @@ func main() {
 	} else {
 		log.Println("✅ .env file loaded successfully")
 	}
-	db.ConnectDb()
-	apiKey := os.Getenv("RESEND_API_KEY")
+	// apiKey := os.Getenv("RESEND_API_KEY")
 
-	client := resend.NewClient(apiKey)
+	// fmt.Printf("this is the api key %s", apiKey)
+
+	// client := resend.NewClient(apiKey)
+	db.ConnectDb()
 
 	// Send
-	params := &resend.SendEmailRequest{
-		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{"delivered@resend.dev"},
-		Subject: "Hello world",
-		Html:    "<strong>It works!</strong>",
-	}
+	// params := &resend.SendEmailRequest{
+	// 	From:    "Acme <onboarding@resend.dev>",
+	// 	To:      []string{"delivered@resend.dev"},
+	// 	Subject: "Hello world",
+	// 	Html:    "<strong>It works!</strong>",
+	// }
 
-	sent, err := client.Emails.Send(params)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(sent.Id)
+	// sent, err := client.Emails.Send(params)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(sent.Id)
 
 	// Echo instance
 

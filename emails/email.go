@@ -7,7 +7,9 @@ import (
 	"github.com/resend/resend-go/v3"
 )
 
-var client = resend.NewClient(os.Getenv("RESEND_API_KEY"))
+var apiKey = os.Getenv("RESEND_API_KEY")
+
+var client = resend.NewClient(apiKey)
 
 func SendVerificationMail(to, username, token string) error {
 	verificationLink := fmt.Sprintf(`http://localhost:5173/auth/verify?token=%s`, token)
@@ -37,6 +39,7 @@ func SendVerificationMail(to, username, token string) error {
 		Subject: "Verify your NedZl email",
 	}
 
+	fmt.Printf("Sent verification email to %s", apiKey)
 	_, err := client.Emails.Send(params)
 
 	return err
