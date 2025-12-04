@@ -114,7 +114,10 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}
 
-		go emails.SendVerificationMail(req.Email, req.UserName, token)
+		err = emails.SendVerificationMail(req.Email, req.UserName, token)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to send verification email", err)
+		}
 		return utils.ResponseSucess(c, http.StatusCreated, "Registered successfully", map[string]string{
 			"user_name":    user.UserName,
 			"email":        user.Email,
