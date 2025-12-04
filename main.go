@@ -2,6 +2,7 @@ package main
 
 import (
 	"api/db"
+	"api/emails"
 	"api/handlers"
 
 	// "fmt"
@@ -35,6 +36,7 @@ func main() {
 
 	// client := resend.NewClient(apiKey)
 	db.ConnectDb()
+	emails.InitEmailClient()
 
 	// Send
 	// params := &resend.SendEmailRequest{

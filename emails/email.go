@@ -11,6 +11,19 @@ var apiKey = os.Getenv("RESEND_API_KEY")
 
 var client = resend.NewClient(apiKey)
 
+var Client *resend.Client
+
+func InitEmailClient() {
+	apiKey := os.Getenv("RESEND_API_KEY")
+	if apiKey == "" {
+		fmt.Println("❌ RESEND_API_KEY is EMPTY in InitEmailClient")
+	} else {
+		fmt.Println("✅ RESEND_API_KEY loaded in InitEmailClient")
+	}
+
+	Client = resend.NewClient(apiKey)
+}
+
 func SendVerificationMail(to, username, token string) error {
 	verificationLink := fmt.Sprintf(`http://localhost:5173/auth/verify?token=%s`, token)
 
