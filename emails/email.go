@@ -7,27 +7,23 @@ import (
 	"github.com/resend/resend-go/v3"
 )
 
-// var apiKey = os.Getenv("RESEND_API_KEY")
+// var Client *resend.Client
 
-// var client = resend.NewClient(apiKey)
+// func InitEmailClient() {
+// 	apiKey := os.Getenv("RESEND_API_KEY")
+// 	if apiKey == "" {
+// 		fmt.Println("❌ RESEND_API_KEY is EMPTY in InitEmailClient")
+// 	} else {
+// 		fmt.Println("✅ RESEND_API_KEY loaded in InitEmailClient")
+// 	}
 
-var Client *resend.Client
-
-func InitEmailClient() {
-	apiKey := os.Getenv("RESEND_API_KEY")
-	if apiKey == "" {
-		fmt.Println("❌ RESEND_API_KEY is EMPTY in InitEmailClient")
-	} else {
-		fmt.Println("✅ RESEND_API_KEY loaded in InitEmailClient")
-	}
-
-	Client = resend.NewClient(apiKey)
-}
+// 	Client = resend.NewClient(apiKey)
+// }
 
 func SendVerificationMail(to, username, token string) error {
-	if Client == nil {
-		return fmt.Errorf("email client not initialized")
-	}
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
 	verificationLink := fmt.Sprintf(`http://localhost:5173/auth/verify?token=%s`, token)
 
 	html := fmt.Sprintf(`<html>
@@ -55,14 +51,17 @@ func SendVerificationMail(to, username, token string) error {
 		Subject: "Verify your NedZl email",
 	}
 
-	// fmt.Printf("Sent verification email to %s", apiKey)
-	_, err := Client.Emails.Send(params)
+	fmt.Printf("Sent verification email to %s", apiKey)
+	_, err := client.Emails.Send(params)
 
 	return err
 
 }
 
 func SendUserDeactivationEmail(to, username string) error {
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
 	html := fmt.Sprintf(`   <html><body style="background:#F5F5F5;padding:40px;font-family:Arial;">
             <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
                 <h2 style="color:#07B463;text-align:center;">NedZl</h2>
@@ -84,12 +83,15 @@ func SendUserDeactivationEmail(to, username string) error {
 		Subject: "Your NedZl Account Was Deactivated",
 	}
 
-	_, err := Client.Emails.Send(params)
+	_, err := client.Emails.Send(params)
 
 	return err
 }
 
 func SendProductDeactivationEmail(to, username, productname, reason string) error {
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
 	html := fmt.Sprintf(`<html><body style="background:#F5F5F5;padding:40px;font-family:Arial;">
             <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
                 <h2 style="color:#07B463;text-align:center;">NedZl</h2>
@@ -111,7 +113,7 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
 		Subject: "Your Product Was Removed",
 	}
 
-	_, err := Client.Emails.Send(params)
+	_, err := client.Emails.Send(params)
 
 	return err
 }
