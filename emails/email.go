@@ -7,9 +7,9 @@ import (
 	"github.com/resend/resend-go/v3"
 )
 
-var apiKey = os.Getenv("RESEND_API_KEY")
+// var apiKey = os.Getenv("RESEND_API_KEY")
 
-var client = resend.NewClient(apiKey)
+// var client = resend.NewClient(apiKey)
 
 var Client *resend.Client
 
@@ -25,6 +25,9 @@ func InitEmailClient() {
 }
 
 func SendVerificationMail(to, username, token string) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
 	verificationLink := fmt.Sprintf(`http://localhost:5173/auth/verify?token=%s`, token)
 
 	html := fmt.Sprintf(`<html>
@@ -52,8 +55,8 @@ func SendVerificationMail(to, username, token string) error {
 		Subject: "Verify your NedZl email",
 	}
 
-	fmt.Printf("Sent verification email to %s", apiKey)
-	_, err := client.Emails.Send(params)
+	// fmt.Printf("Sent verification email to %s", apiKey)
+	_, err := Client.Emails.Send(params)
 
 	return err
 
@@ -81,7 +84,7 @@ func SendUserDeactivationEmail(to, username string) error {
 		Subject: "Your NedZl Account Was Deactivated",
 	}
 
-	_, err := client.Emails.Send(params)
+	_, err := Client.Emails.Send(params)
 
 	return err
 }
@@ -108,7 +111,7 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
 		Subject: "Your Product Was Removed",
 	}
 
-	_, err := client.Emails.Send(params)
+	_, err := Client.Emails.Send(params)
 
 	return err
 }
