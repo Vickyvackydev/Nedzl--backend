@@ -52,7 +52,7 @@ func SendVerificationMail(to, username, token string) error {
 
 	params := &resend.SendEmailRequest{
 		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{to},
+		To:      []string{"vickyvacky5@gmail.com"},
 		Html:    html,
 		Subject: "Verify your NedZl email",
 	}
@@ -83,7 +83,7 @@ func SendUserDeactivationEmail(to, username string) error {
 
 	params := &resend.SendEmailRequest{
 		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{to},
+		To:      []string{"vickyvacky5@gmail.com"},
 		Html:    html,
 		Subject: "Your NedZl Account Was Deactivated",
 	}
@@ -113,7 +113,7 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
         </body></html>`, username, productname, reason)
 	params := &resend.SendEmailRequest{
 		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{to},
+		To:      []string{"vickyvacky5@gmail.com"},
 		Html:    html,
 		Subject: "Your Product Was Removed",
 	}
