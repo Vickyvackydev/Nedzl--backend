@@ -2,6 +2,7 @@ package main
 
 import (
 	"api/db"
+	"api/emails"
 	"api/handlers"
 
 	// "fmt"
@@ -29,12 +30,24 @@ func main() {
 	} else {
 		log.Println("✅ .env file loaded successfully")
 	}
+
+	// Verify API key is loaded
+	apiKey := os.Getenv("RESEND_API_KEY")
+	if apiKey == "" {
+		log.Fatal("❌ RESEND_API_KEY not found in environment")
+	}
+	log.Printf("✅ RESEND_API_KEY loaded: %s...\n", apiKey[:10])
+
+	// Initialize database
+	db.ConnectDb()
+
+	// Initialize email client AFTER loading env
+	emails.InitEmailClient()
 	// apiKey := os.Getenv("RESEND_API_KEY")
 
 	// fmt.Printf("this is the api key %s", apiKey)
 
 	// client := resend.NewClient(apiKey)
-	db.ConnectDb()
 	// emails.InitEmailClient()
 
 	// Send

@@ -110,6 +110,9 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 			EmailVerified: false,
 		}
 
+		if req.Role == "ADMIN" {
+			user.EmailVerified = true
+		}
 		if err := db.Create(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}

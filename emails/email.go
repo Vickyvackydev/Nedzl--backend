@@ -3,27 +3,33 @@ package emails
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/resend/resend-go/v3"
 )
 
-// var Client *resend.Client
+var (
+	Client *resend.Client
+	once   sync.Once
+)
 
-// func InitEmailClient() {
-// 	apiKey := os.Getenv("RESEND_API_KEY")
-// 	if apiKey == "" {
-// 		fmt.Println("❌ RESEND_API_KEY is EMPTY in InitEmailClient")
-// 	} else {
-// 		fmt.Println("✅ RESEND_API_KEY loaded in InitEmailClient")
-// 	}
-
-// 	Client = resend.NewClient(apiKey)
-// }
+func InitEmailClient() {
+	once.Do(func() {
+		apiKey := os.Getenv("RESEND_API_KEY")
+		if apiKey == "" {
+			fmt.Println("❌ RESEND_API_KEY is EMPTY in InitEmailClient")
+		} else {
+			fmt.Printf("✅ RESEND_API_KEY loaded: %s...\n", apiKey[:10]) // Print first 10 chars
+		}
+		Client = resend.NewClient(apiKey)
+	})
+}
 
 func SendVerificationMail(to, username, token string) error {
-	apiKey := os.Getenv("RESEND_API_KEY")
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
 
-	client := resend.NewClient(apiKey)
 	verificationLink := fmt.Sprintf(`http://localhost:5173/auth/verify?token=%s`, token)
 
 	html := fmt.Sprintf(`<html>
@@ -51,11 +57,10 @@ func SendVerificationMail(to, username, token string) error {
 		Subject: "Verify your NedZl email",
 	}
 
-	fmt.Printf("Sent verification email to %s", apiKey)
-	_, err := client.Emails.Send(params)
+	fmt.Printf("Sending verification email to %s\n", to)
+	_, err := Client.Emails.Send(params)
 
 	return err
-
 }
 
 func SendUserDeactivationEmail(to, username string) error {
