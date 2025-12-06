@@ -135,6 +135,28 @@ type Products struct {
 	ClosedAt          *time.Time     `gorm:"index"`
 }
 
+type ProductResponse struct {
+	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
+	Name              string         `json:"product_name"`
+	ProductPrice      float64        `json:"product_price"`
+	MarketPriceFrom   float64        `json:"market_price_from"`
+	MarketPriceTo     float64        `json:"market_price_to"`
+	CategoryName      string         `json:"category_name"`
+	IsNegotiable      bool           `json:"is_negotiable"`
+	Description       string         `json:"description"`
+	State             string         `json:"state"`
+	AddressInState    string         `json:"address_in_state"`
+	OutStandingIssues string         `json:"outstanding_issues"`
+	ImageUrls         datatypes.JSON `json:"image_urls"`
+	Status            Status         `json:"status" gorm:"type:varchar(20);default:'UNDER_REVIEW'"`
+	Condition         string         `json:"condition"`
+	UserID            uuid.UUID      `json:"user_id"`
+	BrandName         string         `json:"brand_name"`
+	User              PublicUser     `json:"user"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `json:"deleted_at"`
+}
 type StoreSetting struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
 	BusinessName      string         `json:"business_name"`
@@ -265,4 +287,20 @@ type FeaturedSectionProduct struct {
 	CreatedAt         time.Time
 
 	FeaturedSection FeaturedSection `gorm:"constraint:OnDelete:CASCADE;"`
+}
+
+type CustomerReview struct {
+	ID             uuid.UUID        `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	Experience     string           `json:"experience"`
+	UserID         uuid.UUID        `gorm:"type:uuid;index;not null" json:"user_id"`
+	ProductID      uuid.UUID        `gorm:"type:uuid;index;not null " json:"product_id"`
+	ProductDetails *ProductResponse `json:"product_details" gorm:"foreignKey:ProductID;references:ID"`
+	ReviewTitle    string           `json:"review_title"`
+	CustomerName   string           `json:"customer_name"`
+	Review         string           `json:"review"`
+	Images         datatypes.JSON   `json:"images"`
+	IsPublic       bool             `json:"is_public" gorm:"default:true"` // 👈 NEW FIELD
+	CreatedAt      time.Time        `json:"created_at"`
+	UpdatedAt      time.Time        `json:"updated_at"`
+	DeletedAt      gorm.DeletedAt   `json:"deleted_at" gorm:"index"`
 }

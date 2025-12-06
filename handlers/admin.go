@@ -529,7 +529,7 @@ func GetAdminProducts(db *gorm.DB) echo.HandlerFunc {
 		// -- CONVERT TO SAFE RESPONSE --
 
 		// Convert to safe responses without passwords
-		var responses []ProductResponse
+		var responses []models.ProductResponse
 		for _, product := range products {
 			responses = append(responses, ConvertToProductResponse(product))
 		}

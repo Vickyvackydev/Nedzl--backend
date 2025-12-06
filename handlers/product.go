@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -21,31 +20,9 @@ import (
 )
 
 // ProductResponse represents a safe product response without sensitive user data
-type ProductResponse struct {
-	ID                uuid.UUID         `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
-	Name              string            `json:"product_name"`
-	ProductPrice      float64           `json:"product_price"`
-	MarketPriceFrom   float64           `json:"market_price_from"`
-	MarketPriceTo     float64           `json:"market_price_to"`
-	CategoryName      string            `json:"category_name"`
-	IsNegotiable      bool              `json:"is_negotiable"`
-	Description       string            `json:"description"`
-	State             string            `json:"state"`
-	AddressInState    string            `json:"address_in_state"`
-	OutStandingIssues string            `json:"outstanding_issues"`
-	ImageUrls         datatypes.JSON    `json:"image_urls"`
-	Status            models.Status     `json:"status" gorm:"type:varchar(20);default:'UNDER_REVIEW'"`
-	Condition         string            `json:"condition"`
-	UserID            uuid.UUID         `json:"user_id"`
-	BrandName         string            `json:"brand_name"`
-	User              models.PublicUser `json:"user"`
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
-	DeletedAt         gorm.DeletedAt    `json:"deleted_at"`
-}
 
 // convertToProductResponse converts a Products model to a safe ProductResponse
-func ConvertToProductResponse(product models.Products) ProductResponse {
+func ConvertToProductResponse(product models.Products) models.ProductResponse {
 	publicUser := models.PublicUser{
 		ID:          product.User.ID,
 		UserName:    product.User.UserName,
@@ -59,7 +36,7 @@ func ConvertToProductResponse(product models.Products) ProductResponse {
 		DeletedAt:   product.User.DeletedAt,
 	}
 
-	return ProductResponse{
+	return models.ProductResponse{
 		ID:                product.ID,
 		Name:              product.Name,
 		ProductPrice:      product.ProductPrice,
@@ -411,7 +388,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		// -- CONVERT TO SAFE RESPONSE --
 
 		// Convert to safe responses without passwords
-		var responses []ProductResponse
+		var responses []models.ProductResponse
 		for _, product := range products {
 			responses = append(responses, ConvertToProductResponse(product))
 		}
@@ -513,7 +490,7 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch user products", err)
 		}
 
-		var responses []ProductResponse
+		var responses []models.ProductResponse
 		for _, product := range products {
 			responses = append(responses, ConvertToProductResponse(product))
 		}

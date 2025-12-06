@@ -136,6 +136,11 @@ func main() {
 	auth.DELETE("/admin/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
 	auth.DELETE("/admin/users/:id/delete", handlers.DeleteUser(db.DB))
 
+	// -- REVIEW ROUTES -->
+
+	e.POST("/review", handlers.CreateReview(db.DB))
+	e.GET("/reviews/:product_id", handlers.GetPublicReviews(db.DB))
+	auth.GET("/reviews/user", handlers.GetPublicReviews(db.DB))
 	// Get port from environment variable (Railway provides PORT)
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -143,7 +148,7 @@ func main() {
 	}
 
 	address := "0.0.0.0:" + port
-	log.Printf("Server running at http://%s", address)
+	log.Printf("Server running at http://%s", address) //
 	e.Logger.Fatal(e.Start(address))
 
 }

@@ -167,7 +167,7 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 					Find(&products)
 			}
 
-			safeResponse := make([]ProductResponse, 0)
+			safeResponse := make([]models.ProductResponse, 0)
 
 			for _, p := range products {
 				safeResponse = append(safeResponse, ConvertToProductResponse(p))
