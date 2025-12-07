@@ -52,8 +52,8 @@ func ConnectDb() {
 	// ✅ Enable UUID extension safely
 	db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`)
 	db.Exec(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`) // optional but useful
-	db.Exec(`ALTER TABLE customer_reviews 
-DROP CONSTRAINT IF EXISTS fk_customer_reviews_product_details;`)
+	// db.Exec(`ALTER TABLE customer_reviews
+	// DROP CONSTRAINT IF EXISTS fk_customer_reviews_product_details;`)
 
 	fmt.Println("🧱 Extensions ready")
 
