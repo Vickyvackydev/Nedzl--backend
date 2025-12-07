@@ -290,7 +290,7 @@ type FeaturedSectionProduct struct {
 }
 
 type CustomerReview struct {
-	ID           uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	ID           uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	Experience   string         `json:"experience"`
 	UserID       *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
 	ProductID    uuid.UUID      `gorm:"type:uuid;index;not null" json:"product_id"`
