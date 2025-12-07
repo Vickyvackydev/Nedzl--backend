@@ -292,7 +292,7 @@ type FeaturedSectionProduct struct {
 type CustomerReview struct {
 	ID           uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	Experience   string         `json:"experience"`
-	UserID       *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"` // nullable for public reviews
+	UserID       *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
 	ProductID    uuid.UUID      `gorm:"type:uuid;index;not null" json:"product_id"`
 	ReviewTitle  string         `json:"review_title"`
 	CustomerName string         `json:"customer_name"`
@@ -302,6 +302,10 @@ type CustomerReview struct {
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+
+	// Relations (optional but recommended)
+	Product Products `gorm:"foreignKey:ProductID" json:"-"`
+	User    *User    `gorm:"foreignKey:UserID" json:"-"`
 }
 
 type ReviewResponse struct {
