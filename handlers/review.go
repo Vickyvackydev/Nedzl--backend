@@ -109,7 +109,7 @@ func GetPublicReviews(db *gorm.DB) echo.HandlerFunc {
 		productId := c.Param("product_id")
 		var reviews []models.CustomerReview
 
-		if err := db.Where("product_id = ? AND is_public = false", productId).Order("created_at DESC").Find(&reviews).Error; err != nil {
+		if err := db.Where("product_id = ? AND is_public = true", productId).Order("created_at DESC").Find(&reviews).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch reviews", err)
 		}
 
