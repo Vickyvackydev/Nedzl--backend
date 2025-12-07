@@ -76,23 +76,27 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
 		}
 
+		// Validate role
 		if !models.IsValidRole(req.Role) || req.Role == "" {
 			return utils.ResponseError(c, http.StatusBadRequest, "Invalid role. Allowed - ADMIN, USER", nil)
 		}
-		// check if user already exists
-		var existinguser models.User
 
-		if err := db.Where("user_name = ?", req.UserName).First(&existinguser).Error; err == nil {
+		// Check if user exists
+		var existingUser models.User
+
+		if err := db.Where("user_name = ?", req.UserName).First(&existingUser).Error; err == nil {
 			return utils.ResponseError(c, http.StatusConflict, "Username already exists", nil)
 		}
 
-		if err := db.Where("email = ?", req.Email).First(&existinguser).Error; err == nil {
+		if err := db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
 			return utils.ResponseError(c, http.StatusConflict, "Email already exists", nil)
 		}
-		if err := db.Where("phone_number = ?", req.PhoneNumber).First(&existinguser).Error; err == nil {
-			return utils.ResponseError(c, http.StatusConflict, "Phone number has being used", nil)
+
+		if err := db.Where("phone_number = ?", req.PhoneNumber).First(&existingUser).Error; err == nil {
+			return utils.ResponseError(c, http.StatusConflict, "Phone number has been used", nil)
 		}
 
+		// Hash password
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to hash password", err)
@@ -113,14 +117,18 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		if req.Role == "ADMIN" {
 			user.EmailVerified = true
 		}
+
 		if err := db.Create(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}
 
-		err = emails.SendVerificationMail(req.Email, req.UserName, token)
-		if err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to send verification email", err)
+		if req.Role != "ADMIN" {
+			err = emails.SendVerificationMail(req.Email, req.UserName, token)
+			if err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to send verification email", err)
+			}
 		}
+
 		return utils.ResponseSucess(c, http.StatusCreated, "Registered successfully", map[string]string{
 			"user_name":    user.UserName,
 			"email":        user.Email,
