@@ -192,6 +192,32 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 
 }
 
+func VerifyEmail(db *gorm.DB) echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+		token := c.QueryParam("token")
+
+		if token == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "No Token Found", nil)
+		}
+
+		var user models.User
+
+		if err := db.Where("email_token = ?", token).First(&user).Error; err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid Token", err)
+		}
+		user.EmailVerified = true
+		user.EmailToken = ""
+
+		if err := db.Save(&user).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to verify email", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Email verified successfully", nil)
+	}
+
+}
+
 // func Login(db *gorm.DB) echo.HandlerFunc {
 // 	return func(c echo.Context) error {
 // 		var req models.LoginRequest

@@ -96,6 +96,7 @@ func main() {
 	// Routes
 	e.POST("/auth/register", handlers.Register(db.DB))
 	e.POST("/auth/login", handlers.Login(db.DB))
+	e.POST("/auth/verify-email", handlers.VerifyEmail(db.DB))
 
 	auth := e.Group("")
 	auth.Use(jwtMiddleware.AuthMiddleware)
