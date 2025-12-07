@@ -40,7 +40,7 @@ func main() {
 
 	// Initialize database
 	db.ConnectDb()
-	db.ResetDatabase(db.DB)
+	// db.ResetDatabase(db.DB)
 
 	// Initialize email client AFTER loading env
 	emails.InitEmailClient()
