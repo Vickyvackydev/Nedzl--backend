@@ -43,3 +43,34 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 
 }
+
+func OptionalAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		authHeader := c.Request().Header.Get("Authorization")
+
+		// If no header or invalid format, just proceed without setting user_id
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			return next(c)
+		}
+
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+			return jwtSecretKey, nil
+		})
+
+		// If invalid token, just proceed (or maybe we should log it? For now, treat as guest)
+		if err != nil || !token.Valid {
+			return next(c)
+		}
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if userIDStr, ok := claims["user_id"].(string); ok {
+				if uid, err := uuid.Parse(userIDStr); err == nil {
+					c.Set("user_id", uid)
+				}
+			}
+		}
+
+		return next(c)
+	}
+}

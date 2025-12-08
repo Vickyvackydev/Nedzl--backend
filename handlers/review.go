@@ -20,7 +20,11 @@ import (
 func CreateReview(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
-		userIDStr, _ := c.Get("userID").(string)
+		// Determine if user is logged in (via OptionalAuthMiddleware)
+		var userID *uuid.UUID
+		if u, ok := c.Get("user_id").(uuid.UUID); ok {
+			userID = &u
+		}
 
 		productID := c.FormValue("product_id")
 		experience := c.FormValue("experience")
@@ -44,9 +48,9 @@ func CreateReview(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		//  Prevent duplicate reviews
-		if userIDStr != "" {
+		if userID != nil {
 			var existing models.CustomerReview
-			db.Where("user_id = ? AND product_id = ? AND is_public = ?", userIDStr, productID, isPublic).
+			db.Where("user_id = ? AND product_id = ? AND is_public = ?", userID, productID, isPublic).
 				First(&existing)
 			if existing.ID != uuid.Nil {
 				return utils.ResponseError(c, 400, "You already submitted this type of review", nil)
@@ -88,11 +92,7 @@ func CreateReview(db *gorm.DB) echo.HandlerFunc {
 			Images:       datatypes.JSON(imgJson),
 			IsPublic:     isPublic,
 			ProductID:    uuid.MustParse(productID),
-		}
-
-		if userIDStr != "" {
-			uid := uuid.MustParse(userIDStr)
-			reviewRecord.UserID = &uid
+			UserID:       userID,
 		}
 
 		if err := db.Create(&reviewRecord).Error; err != nil {
@@ -166,7 +166,9 @@ func GetSellerReviews(db *gorm.DB) echo.HandlerFunc {
 
 		// Join CustomerReview with Products to find reviews for products owned by userID
 		// and preload Product details
-		if err := db.Joins("JOIN products ON products.id = customer_reviews.product_id").
+		if err := db.Table("customer_reviews").
+			Select("customer_reviews.*").
+			Joins("JOIN products ON products.id = customer_reviews.product_id").
 			Where("products.user_id = ?", userID).
 			Preload("Product").
 			Order("customer_reviews.created_at DESC").

@@ -140,7 +140,7 @@ func main() {
 
 	// -- REVIEW ROUTES -->
 
-	e.POST("/review", handlers.CreateReview(db.DB))
+	e.POST("/review", handlers.CreateReview(db.DB), jwtMiddleware.OptionalAuthMiddleware)
 	e.GET("/reviews/:product_id", handlers.GetPublicReviews(db.DB))
 	// Authenticated routes for reviews
 	auth.GET("/reviews/user", handlers.GetCustomerMyReviews(db.DB)) // Get all reviews I (as a customer) have written
