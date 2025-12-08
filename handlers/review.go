@@ -153,7 +153,24 @@ func GetCustomerMyReviews(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, 500, "Failed to fetch reviews", err)
 		}
 
-		return utils.ResponseSucess(c, 200, "My reviews fetched successfully", reviews)
+		var product models.Products
+		if err := db.Preload("User").Where("id = ?", reviews[0].ProductID).First(&product).Error; err != nil {
+			return utils.ResponseError(c, 404, "Product not found", err)
+		}
+
+		var response []models.ReviewResponse
+		productDetails := ConvertToProductResponse(product)
+
+		for _, r := range reviews {
+
+			response = append(response, models.ReviewResponse{
+				CustomerReview: r,
+				ProductDetails: &productDetails,
+			})
+
+		}
+
+		return utils.ResponseSucess(c, 200, "My reviews fetched successfully", response)
 	}
 }
 
@@ -176,6 +193,23 @@ func GetSellerReviews(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, 500, "Failed to fetch seller reviews", err)
 		}
 
-		return utils.ResponseSucess(c, 200, "Seller reviews fetched successfully", reviews)
+		var product models.Products
+		if err := db.Preload("User").Where("id = ?", reviews[0].ProductID).First(&product).Error; err != nil {
+			return utils.ResponseError(c, 404, "Product not found", err)
+		}
+
+		var response []models.ReviewResponse
+		productDetails := ConvertToProductResponse(product)
+
+		for _, r := range reviews {
+
+			response = append(response, models.ReviewResponse{
+				CustomerReview: r,
+				ProductDetails: &productDetails,
+			})
+
+		}
+
+		return utils.ResponseSucess(c, 200, "Seller reviews fetched successfully", response)
 	}
 }
