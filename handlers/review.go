@@ -108,8 +108,13 @@ func GetPublicReviews(db *gorm.DB) echo.HandlerFunc {
 
 		productId := c.Param("product_id")
 		var reviews []models.CustomerReview
+		// Convert string → UUID
+		productUUID, err := uuid.Parse(productId)
+		if err != nil {
+			return utils.ResponseError(c, 400, "Invalid product ID format", err)
+		}
 
-		if err := db.Where("product_id = ? AND is_public = true", productId).Order("created_at DESC").Find(&reviews).Error; err != nil {
+		if err := db.Where("product_id = ? AND is_public = true", productUUID).Order("created_at DESC").Find(&reviews).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch reviews", err)
 		}
 
