@@ -143,7 +143,7 @@ func GetPublicReviews(db *gorm.DB) echo.HandlerFunc {
 func GetCustomerMyReviews(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
-		userID := c.Get("userID").(string)
+		userID := c.Get("user_id").(string)
 
 		var reviews []models.CustomerReview
 		// Fetch all reviews by this user, regardless of is_public status
@@ -160,7 +160,7 @@ func GetCustomerMyReviews(db *gorm.DB) echo.HandlerFunc {
 // GetSellerReviews fetches all reviews for products owned by the current user (seller)
 func GetSellerReviews(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		userID := c.Get("userID").(string)
+		userID := c.Get("user_id").(string)
 
 		var reviews []models.CustomerReview
 
