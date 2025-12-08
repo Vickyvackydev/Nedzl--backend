@@ -138,18 +138,42 @@ func GetPublicReviews(db *gorm.DB) echo.HandlerFunc {
 		return utils.ResponseSucess(c, http.StatusOK, "Public reviews fetched successfully", response)
 	}
 }
-func GetPrivateReviews(db *gorm.DB) echo.HandlerFunc {
+
+// GetCustomerMyReviews fetches all reviews authored by the current user (both public and private)
+func GetCustomerMyReviews(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		userID := c.Get("userID").(string)
 
 		var reviews []models.CustomerReview
-		if err := db.Where("user_id = ? AND is_public = false", userID).
+		// Fetch all reviews by this user, regardless of is_public status
+		if err := db.Where("user_id = ?", userID).
 			Order("created_at DESC").
 			Find(&reviews).Error; err != nil {
 			return utils.ResponseError(c, 500, "Failed to fetch reviews", err)
 		}
 
-		return utils.ResponseSucess(c, 200, "Private reviews fetched", reviews)
+		return utils.ResponseSucess(c, 200, "My reviews fetched successfully", reviews)
+	}
+}
+
+// GetSellerReviews fetches all reviews for products owned by the current user (seller)
+func GetSellerReviews(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userID := c.Get("userID").(string)
+
+		var reviews []models.CustomerReview
+
+		// Join CustomerReview with Products to find reviews for products owned by userID
+		// and preload Product details
+		if err := db.Joins("JOIN products ON products.id = customer_reviews.product_id").
+			Where("products.user_id = ?", userID).
+			Preload("Product").
+			Order("customer_reviews.created_at DESC").
+			Find(&reviews).Error; err != nil {
+			return utils.ResponseError(c, 500, "Failed to fetch seller reviews", err)
+		}
+
+		return utils.ResponseSucess(c, 200, "Seller reviews fetched successfully", reviews)
 	}
 }

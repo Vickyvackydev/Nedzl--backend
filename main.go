@@ -142,7 +142,9 @@ func main() {
 
 	e.POST("/review", handlers.CreateReview(db.DB))
 	e.GET("/reviews/:product_id", handlers.GetPublicReviews(db.DB))
-	auth.GET("/reviews/user", handlers.GetPublicReviews(db.DB))
+	// Authenticated routes for reviews
+	auth.GET("/reviews/user", handlers.GetCustomerMyReviews(db.DB)) // Get all reviews I (as a customer) have written
+	auth.GET("/reviews/seller", handlers.GetSellerReviews(db.DB))   // Get all reviews on my products (as a seller)
 	// Get port from environment variable (Railway provides PORT)
 	port := os.Getenv("PORT")
 	if port == "" {
