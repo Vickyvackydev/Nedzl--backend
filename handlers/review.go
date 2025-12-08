@@ -119,7 +119,7 @@ func GetPublicReviews(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		var product models.Products
-		if err := db.Where("id = ?", productId).Where(&product).Error; err != nil {
+		if err := db.Where("id = ?", productUUID).First(&product).Error; err != nil {
 			return utils.ResponseError(c, 404, "Product not found", err)
 		}
 
