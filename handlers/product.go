@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -373,6 +374,20 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		}
 		if keyword != "" {
 			query = query.Where("product_name ILIKE ? OR description ILIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+		}
+
+		// -- SECTION FILTER --
+		section := c.QueryParam("section")
+		if section != "" {
+			now := time.Now().UTC()
+			startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+			switch section {
+			case "todays_deal":
+				query = query.Where("created_at >= ?", startOfDay)
+			case "for_you":
+				query = query.Where("created_at < ?", startOfDay)
+			}
 		}
 
 		query = query.Order("created_at DESC")
