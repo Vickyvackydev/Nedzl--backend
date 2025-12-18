@@ -226,7 +226,7 @@ func VerifyUser(db *gorm.DB) echo.HandlerFunc {
 
 		var user models.User
 
-		if err := db.Where("id = ?").First(&user).Error; err != nil {
+		if err := db.Where("id = ?", id).First(&user).Error; err != nil {
 			return utils.ResponseError(c, 404, "User not found", err)
 		}
 
