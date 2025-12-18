@@ -30,15 +30,16 @@ func GetUsers(db *gorm.DB) echo.HandlerFunc {
 
 		for i, u := range users {
 			publicUsers[i] = models.PublicUser{
-				ID:        u.ID,
-				UserName:  u.UserName,
-				Email:     u.Email,
-				Role:      string(u.Role),
-				ImageUrl:  u.ImageUrl,
-				Location:  u.Location,
-				Status:    u.Status,
-				CreatedAt: u.CreatedAt,
-				UpdatedAt: u.UpdatedAt,
+				ID:         u.ID,
+				UserName:   u.UserName,
+				Email:      u.Email,
+				Role:       string(u.Role),
+				ImageUrl:   u.ImageUrl,
+				Location:   u.Location,
+				Status:     u.Status,
+				IsVerified: u.IsVerified,
+				CreatedAt:  u.CreatedAt,
+				UpdatedAt:  u.UpdatedAt,
 			}
 
 		}
@@ -61,15 +62,16 @@ func GetUserById(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		response := models.PublicUser{
-			ID:        user.ID,
-			UserName:  user.UserName,
-			Email:     user.Email,
-			Role:      string(user.Role),
-			ImageUrl:  user.ImageUrl,
-			Location:  user.Location,
-			Status:    user.Status,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
+			ID:         user.ID,
+			UserName:   user.UserName,
+			Email:      user.Email,
+			Role:       string(user.Role),
+			ImageUrl:   user.ImageUrl,
+			Location:   user.Location,
+			Status:     user.Status,
+			IsVerified: user.IsVerified,
+			CreatedAt:  user.CreatedAt,
+			UpdatedAt:  user.UpdatedAt,
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "User retrieved successfully", response)
@@ -153,6 +155,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 			Role:        string(user.Role),
 			ImageUrl:    user.ImageUrl,
 			Location:    user.Location,
+			IsVerified:  user.IsVerified,
 			CreatedAt:   user.CreatedAt,
 			UpdatedAt:   user.UpdatedAt,
 		}
@@ -182,6 +185,7 @@ func Me(c echo.Context) error {
 		PhoneNumber: user.PhoneNumber,
 		ImageUrl:    user.ImageUrl,
 		Location:    user.Location,
+		IsVerified:  user.IsVerified,
 		CreatedAt:   user.CreatedAt,
 		UpdatedAt:   user.UpdatedAt,
 		DeletedAt:   user.DeletedAt,

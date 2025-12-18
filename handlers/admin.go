@@ -331,6 +331,7 @@ func GetDashboardUsers(db *gorm.DB) echo.HandlerFunc {
 					PhoneNumber: user.PhoneNumber,
 					Location:    user.Location,
 					Status:      user.Status,
+					IsVerified:  user.IsVerified,
 					ImageUrl:    user.ImageUrl,
 					CreatedAt:   user.CreatedAt,
 					UpdatedAt:   user.UpdatedAt,
@@ -425,6 +426,7 @@ func GetActiveProductsUsers(db *gorm.DB) echo.HandlerFunc {
 					PhoneNumber: user.PhoneNumber,
 					Location:    user.Location,
 					Status:      user.Status,
+					IsVerified:  user.IsVerified,
 					ImageUrl:    user.ImageUrl,
 					CreatedAt:   user.CreatedAt,
 					UpdatedAt:   user.UpdatedAt,
@@ -612,15 +614,16 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 		var storeResponse *models.UserStoreDetails = nil
 
 		userResponse := models.PublicUser{
-			ID:        user.ID,
-			UserName:  user.UserName,
-			Email:     user.Email,
-			Role:      string(user.Role),
-			ImageUrl:  user.ImageUrl,
-			Location:  user.Location,
-			Status:    user.Status,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
+			ID:         user.ID,
+			UserName:   user.UserName,
+			Email:      user.Email,
+			Role:       string(user.Role),
+			ImageUrl:   user.ImageUrl,
+			Location:   user.Location,
+			Status:     user.Status,
+			IsVerified: user.IsVerified,
+			CreatedAt:  user.CreatedAt,
+			UpdatedAt:  user.UpdatedAt,
 		}
 
 		if storeSettingsErr == nil {

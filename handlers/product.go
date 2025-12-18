@@ -32,6 +32,7 @@ func ConvertToProductResponse(product models.Products) models.ProductResponse {
 		PhoneNumber: product.User.PhoneNumber,
 		ImageUrl:    product.User.ImageUrl,
 		Location:    product.User.Location,
+		IsVerified:  product.User.IsVerified,
 		CreatedAt:   product.User.CreatedAt,
 		UpdatedAt:   product.User.UpdatedAt,
 		DeletedAt:   product.User.DeletedAt,

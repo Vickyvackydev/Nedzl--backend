@@ -40,6 +40,7 @@ func convertToStoreResponse(settings models.StoreSetting) StoreResponse {
 		ImageUrl:    settings.User.ImageUrl,
 		Location:    settings.User.Location,
 		Status:      settings.User.Status,
+		IsVerified:  settings.User.IsVerified,
 		CreatedAt:   settings.User.CreatedAt,
 		UpdatedAt:   settings.User.UpdatedAt,
 		DeletedAt:   settings.User.DeletedAt,
