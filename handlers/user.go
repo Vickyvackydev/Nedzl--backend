@@ -225,8 +225,11 @@ func VerifyUser(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		var user models.User
+		result := db.Model(&user).
+			Where("id = ?", id).
+			Select("is_verified").
+			Updates(models.User{IsVerified: true})
 
-		result := db.Model(&user).Where("id = ?", id).Update("is_verified", true)
 		if result.Error != nil {
 			return utils.ResponseError(c, 500, "Failed to verify User", result.Error)
 		}
