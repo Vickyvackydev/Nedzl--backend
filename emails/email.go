@@ -122,3 +122,32 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
 
 	return err
 }
+
+func SendAccountVerifiedMail(to, username string) error {
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+	html := fmt.Sprintf(`<html><body style="background:#F5F5F5;padding:40px;font-family:Arial;">
+            <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
+                <h2 style="color:#07B463;text-align:center;">NedZl</h2>
+                <p>Hello %s,</p>
+                <p>Your account has been successfully verified! You can now log in and start using NedZl.</p>
+                
+                <a href="https://nedzl-market.vercel.app/login" 
+                   style="background:#07B463;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:20px;">
+                    Login to Account
+                </a>
+            </div>
+        </body></html>`, username)
+
+	params := &resend.SendEmailRequest{
+		From:    "Acme <onboarding@resend.dev>",
+		To:      []string{"vickyvacky5@gmail.com"},
+		Html:    html,
+		Subject: "Account Verified Successfully",
+	}
+
+	_, err := client.Emails.Send(params)
+
+	return err
+}

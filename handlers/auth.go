@@ -203,6 +203,10 @@ func VerifyEmail(db *gorm.DB) echo.HandlerFunc {
 
 		var user models.User
 
+		if err := db.Where("email_verified = ?", true).First(&user).Error; err == nil {
+			return utils.ResponseError(c, http.StatusForbidden, "Email already verified", nil)
+		}
+
 		if err := db.Where("email_token = ?", token).First(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusBadRequest, "Invalid Token", err)
 		}
@@ -212,6 +216,8 @@ func VerifyEmail(db *gorm.DB) echo.HandlerFunc {
 		if err := db.Save(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to verify email", err)
 		}
+
+		emails.SendAccountVerifiedMail(user.Email, user.UserName)
 
 		return utils.ResponseSucess(c, http.StatusOK, "Email verified successfully", nil)
 	}

@@ -215,3 +215,26 @@ func DeleteUser(db *gorm.DB) echo.HandlerFunc {
 		return utils.ResponseSucess(c, 200, "User deleted successfully", nil)
 	}
 }
+
+func VerifyUser(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		id := c.Param("id")
+
+		if id == "" {
+			return utils.ResponseError(c, 400, "ID can not be null", nil)
+		}
+
+		var user models.User
+
+		result := db.Model(&user).Where("id = ?", id).Update("is_verified", true)
+		if result.Error != nil {
+			return utils.ResponseError(c, 500, "Failed to verify User", result.Error)
+		}
+
+		if result.RowsAffected == 0 {
+			return utils.ResponseError(c, 404, "User not found", nil)
+		}
+
+		return utils.ResponseSucess(c, 200, "User verified successfully", nil)
+	}
+}

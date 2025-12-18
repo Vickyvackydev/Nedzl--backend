@@ -396,7 +396,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		var total int64
 
 		query.Model(&models.Products{}).Count(&total)
-		if err := query.Limit(limit).Offset(offSet).Find(&products).Error; err != nil {
+		if err := query.Limit(limit).Offset(offSet).Where("status = ?", models.StatusOngoing).Find(&products).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve products", err)
 		}
 

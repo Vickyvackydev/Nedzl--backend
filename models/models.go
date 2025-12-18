@@ -103,6 +103,7 @@ type User struct {
 	ImageUrl      string         `json:"image_url"`
 	Location      string         `json:"location"`
 	EmailVerified bool           `gorm:"default:false" json:"email_verified"`
+	IsVerified    bool           `gorm:"default:false" json:"is_verified"`
 	EmailToken    string         `gorm:"size:255" json:"email_token"`
 	Status        Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
 	CreatedAt     time.Time      `json:"created_at" gorm:"column:created_at"`
