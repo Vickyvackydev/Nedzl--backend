@@ -219,23 +219,23 @@ func DeleteUser(db *gorm.DB) echo.HandlerFunc {
 func VerifyUser(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		id := c.Param("id")
-
-		if id == "" {
-			return utils.ResponseError(c, 400, "ID can not be null", nil)
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid user id", err)
 		}
 
 		var user models.User
 
-		if err := db.First(&user, id).Error; err != nil {
-			return utils.ResponseError(c, 404, "User not found", err)
+		if err := db.First(&user, "id = ?", uid).Error; err != nil {
+			return utils.ResponseError(c, http.StatusNotFound, "User not found", err)
 		}
 
 		user.IsVerified = true
 
 		if err := db.Save(&user).Error; err != nil {
-			return utils.ResponseError(c, 500, "Failed to verify user", err)
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to verify user", err)
 		}
 
-		return utils.ResponseSucess(c, 200, "User verified successfully", nil)
+		return utils.ResponseSucess(c, http.StatusOK, "User verified successfully", nil)
 	}
 }
