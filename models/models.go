@@ -88,6 +88,7 @@ type PublicUser struct {
 	ImageUrl    string         `json:"image_url"`
 	Location    string         `json:"location"`
 	Status      Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
+	IsVerified  bool           `gorm:"default:false" json:"is_verified"`
 	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
