@@ -30,7 +30,7 @@ func SendVerificationMail(to, username, token string) error {
 		return fmt.Errorf("email client not initialized")
 	}
 
-	verificationLink := fmt.Sprintf(`https://nedzl-market.vercel.app/auth/verify?token=%s`, token)
+	verificationLink := fmt.Sprintf(`https://nedzl-market.vercel.app/auth/verify?token=%s&email=%s`, token, to)
 
 	html := fmt.Sprintf(`<html>
         <body style="background:#F5F5F5;padding:40px;font-family:Arial;">
