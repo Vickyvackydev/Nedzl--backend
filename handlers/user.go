@@ -225,17 +225,15 @@ func VerifyUser(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		var user models.User
-		result := db.Model(&user).
-			Where("id = ?", id).
-			Select("is_verified").
-			Updates(models.User{IsVerified: true})
 
-		if result.Error != nil {
-			return utils.ResponseError(c, 500, "Failed to verify User", result.Error)
+		if err := db.Where("id = ?").First(&user).Error; err != nil {
+			return utils.ResponseError(c, 404, "User not found", err)
 		}
 
-		if result.RowsAffected == 0 {
-			return utils.ResponseError(c, 404, "User not found", nil)
+		user.IsVerified = true
+
+		if err := db.Save(&user).Error; err != nil {
+			return utils.ResponseError(c, 500, "Failed to verify user", err)
 		}
 
 		return utils.ResponseSucess(c, 200, "User verified successfully", nil)
