@@ -51,8 +51,8 @@ func SendVerificationMail(to, username, token string) error {
         </html>`, username, verificationLink, verificationLink)
 
 	params := &resend.SendEmailRequest{
-		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{"vickyvacky5@gmail.com"},
+		From:    "noreply@nedzl.com",
+		To:      []string{to},
 		Html:    html,
 		Subject: "Verify your NedZl email",
 	}
@@ -82,8 +82,8 @@ func SendUserDeactivationEmail(to, username string) error {
         </body></html>`, username)
 
 	params := &resend.SendEmailRequest{
-		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{"vickyvacky5@gmail.com"},
+		From:    "noreply@nedzl.com",
+		To:      []string{to},
 		Html:    html,
 		Subject: "Your NedZl Account Was Deactivated",
 	}
@@ -112,8 +112,8 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
             </div>
         </body></html>`, username, productname, reason)
 	params := &resend.SendEmailRequest{
-		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{"vickyvacky5@gmail.com"},
+		From:    "noreply@nedzl.com",
+		To:      []string{to},
 		Html:    html,
 		Subject: "Your Product Was Removed",
 	}
@@ -141,8 +141,8 @@ func SendAccountVerifiedMail(to, username string) error {
         </body></html>`, username)
 
 	params := &resend.SendEmailRequest{
-		From:    "Acme <onboarding@resend.dev>",
-		To:      []string{"vickyvacky5@gmail.com"},
+		From:    "noreply@nedzl.com",
+		To:      []string{to},
 		Html:    html,
 		Subject: "Account Verified Successfully",
 	}
