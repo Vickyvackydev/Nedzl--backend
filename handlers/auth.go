@@ -220,8 +220,6 @@ func VerifyEmail(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to verify email", err)
 		}
 
-		emails.SendAccountVerifiedMail(user.Email, user.UserName)
-
 		return utils.ResponseSucess(c, http.StatusOK, "Email verified successfully", nil)
 	}
 

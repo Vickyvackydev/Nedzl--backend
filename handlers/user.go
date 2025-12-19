@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"api/db"
+	"api/emails"
 	"api/models"
 	"api/utils"
 	"fmt"
@@ -239,6 +240,7 @@ func VerifyUser(db *gorm.DB) echo.HandlerFunc {
 		if err := db.Save(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to verify user", err)
 		}
+		emails.SendAccountVerifiedMail(user.Email, user.UserName)
 
 		return utils.ResponseSucess(c, http.StatusOK, "User verified successfully", nil)
 	}
