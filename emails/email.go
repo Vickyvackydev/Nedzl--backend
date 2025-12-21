@@ -30,7 +30,7 @@ func SendVerificationMail(to, username, token string) error {
 		return fmt.Errorf("email client not initialized")
 	}
 
-	verificationLink := fmt.Sprintf(`https://nedzl-market.vercel.app/auth/verify?token=%s&email=%s`, token, to)
+	verificationLink := fmt.Sprintf(`https://nedzl.com/auth/verify?token=%s&email=%s`, token, to)
 
 	html := fmt.Sprintf(`<html>
         <body style="background:#F5F5F5;padding:40px;font-family:Arial;">
@@ -95,7 +95,7 @@ func SendUserDeactivationEmail(to, username string) error {
 
 func SendProductDeactivationEmail(to, username, productname, reason string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
-
+	// product mail
 	client := resend.NewClient(apiKey)
 	html := fmt.Sprintf(`<html><body style="background:#F5F5F5;padding:40px;font-family:Arial;">
             <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
