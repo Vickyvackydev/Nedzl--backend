@@ -79,6 +79,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		condition := c.FormValue("condition")
 		brandName := c.FormValue("brand_name")
 		status := c.FormValue("status")
+		university := c.FormValue("university")
 
 		// if name == "" || productPriceStr == "" || marketPriceFromStr == "" || marketPriceToStr == "" || categoryName == "" || isNegotiableStr == "" || description == "" || state == "" || addressInState == "" || outstandingIssues == "" || condition == "" || brandName == "" {
 		// 	return c.JSON(http.StatusBadRequest, echo.Map{"error": "All fields are required"})
@@ -161,6 +162,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			AddressInState:    addressInState,
 			OutStandingIssues: outstandingIssues,
 			Condition:         condition,
+			University:        university,
 			BrandName:         brandName,
 			ImageUrls:         datatypes.JSON(imageUrlsJSON),
 			Status:            models.Status(status),
@@ -207,10 +209,11 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		condition := c.FormValue("condition")
 		brandName := c.FormValue("brand_name")
 		status := c.FormValue("status")
+		university := c.FormValue("university")
 
 		if productName == "" || productPrice == "" || marketPriceFrom == "" || marketPriceTo == "" ||
 			categoryName == "" || isNegotiable == "" || description == "" || state == "" || brandName == "" ||
-			addressInState == "" || condition == "" {
+			addressInState == "" || condition == "" || university == "" {
 			return utils.ResponseError(c, http.StatusBadRequest, "All fields are required", nil)
 		}
 
@@ -297,6 +300,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		existingProduct.OutStandingIssues = outstandingIssues
 		existingProduct.AddressInState = addressInState
 		existingProduct.ImageUrls = updatedImageUrlJson
+		existingProduct.University = university
 
 		if status != "" {
 			existingProduct.Status = models.Status(status)
@@ -334,6 +338,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		minPrice := c.QueryParam("min_price")
 		maxPrice := c.QueryParam("max_price")
 		keyword := c.QueryParam("keyword")
+		university := c.QueryParam("university")
 
 		// -- PAGINATION -- //
 
@@ -365,6 +370,9 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 
 		if state != "" {
 			query = query.Where("state = ?", state)
+		}
+		if university != "" {
+			query = query.Where("university = ?", university)
 		}
 
 		if startDate != "" && endDate != "" {
