@@ -603,7 +603,7 @@ func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 		var product models.Products
 
-		if err := db.Where("id =? AND user_id =?", id, UserId).Delete(&product).Error; err != nil {
+		if err := db.Where("id =? AND user_id =?", id, UserId).Find(&product).Delete(&product).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete product", err)
 		}
 
