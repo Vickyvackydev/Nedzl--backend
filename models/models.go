@@ -91,7 +91,7 @@ type PublicUser struct {
 	IsVerified  bool           `gorm:"default:false" json:"is_verified"`
 	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type User struct {
@@ -109,7 +109,7 @@ type User struct {
 	Status        Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
 	CreatedAt     time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt     time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt     gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type Products struct {
@@ -134,7 +134,7 @@ type Products struct {
 	User              User           `json:"user" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	CreatedAt         time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt         time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt         gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index"`
 	ClosedAt          *time.Time     `gorm:"index"`
 }
 
@@ -159,7 +159,7 @@ type ProductResponse struct {
 	User              PublicUser     `json:"user"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
-	DeletedAt         gorm.DeletedAt `json:"deleted_at"`
+	DeletedAt         gorm.DeletedAt `json:"-"`
 }
 type StoreSetting struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
@@ -267,7 +267,7 @@ type UserStoreDetails struct {
 
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 type UserDetailsResponse struct {
 	UserDetail   PublicUser        `json:"user_details"`
@@ -306,7 +306,7 @@ type CustomerReview struct {
 	IsPublic     bool           `json:"is_public" gorm:"default:true"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
-	DeletedAt    gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// Relations (optional but recommended)
 	Product Products `gorm:"foreignKey:ProductID" json:"-"`

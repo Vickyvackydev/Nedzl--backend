@@ -205,12 +205,9 @@ func DeleteUser(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		var user models.User
-
-		result := db.Model(&user).Where("id = ?", id).Find(&user).Delete(&user)
+		result := db.Delete(&user, "id = ?", id)
 		if result.Error != nil {
-
 			return utils.ResponseError(c, 500, "Failed to delete User", result.Error)
-
 		}
 
 		if result.RowsAffected == 0 {

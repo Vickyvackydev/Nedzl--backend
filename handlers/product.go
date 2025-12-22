@@ -602,9 +602,13 @@ func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 		id := c.Param("id")
 
 		var product models.Products
+		result := db.Where("id = ? AND user_id = ?", id, UserId).Delete(&product)
+		if result.Error != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete product", result.Error)
+		}
 
-		if err := db.Where("id =? AND user_id =?", id, UserId).Find(&product).Delete(&product).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete product", err)
+		if result.RowsAffected == 0 {
+			return utils.ResponseError(c, http.StatusNotFound, "Product not found or unauthorized", nil)
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "Product deleted successfully", nil)
