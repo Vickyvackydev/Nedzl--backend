@@ -213,7 +213,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 		if productName == "" || productPrice == "" || marketPriceFrom == "" || marketPriceTo == "" ||
 			categoryName == "" || isNegotiable == "" || description == "" || state == "" || brandName == "" ||
-			addressInState == "" || condition == "" || university == "" {
+			addressInState == "" || condition == "" {
 			return utils.ResponseError(c, http.StatusBadRequest, "All fields are required", nil)
 		}
 
