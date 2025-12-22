@@ -43,6 +43,9 @@ func UpdateProductStatus(db *gorm.DB) echo.HandlerFunc {
 			updateData["closed_at"] = &now
 		}
 
+		// Store original status for reactivation check
+		oldStatus := product.Status
+
 		// Update with all fields
 		result := db.Model(&models.Products{}).Where("id = ?", id).Updates(updateData)
 		if result.Error != nil {
@@ -51,6 +54,15 @@ func UpdateProductStatus(db *gorm.DB) echo.HandlerFunc {
 
 		if models.Status(body.Status) == models.StatusRejected {
 			go emails.SendProductDeactivationEmail(product.User.Email, product.User.UserName, product.Name, body.Reason)
+		}
+
+		if models.Status(body.Status) == models.StatusClosed {
+			go emails.SendProductClosureEmail(product.User.Email, product.User.UserName, product.Name)
+		}
+
+		// Check if status was CLOSED and now is REACTIVATED
+		if oldStatus == models.StatusClosed && models.Status(body.Status) == models.StatusOngoing {
+			go emails.SendProductReactivationEmail(product.User.Email, product.User.UserName, product.Name, id)
 		}
 
 		if result.RowsAffected == 0 {
