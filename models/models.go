@@ -128,6 +128,7 @@ type Products struct {
 	BrandName         string         `json:"brand_name"`
 	ImageUrls         datatypes.JSON `json:"image_urls"`
 	NewImages         datatypes.JSON `json:"new_images"`
+	University        string         `json:"university"`
 	Status            Status         `json:"status" gorm:"type:varchar(20);default:'ONGOING'"`
 	UserID            uuid.UUID      `json:"user_id" gorm:"type:uuid"`
 	User              User           `json:"user" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
@@ -153,6 +154,7 @@ type ProductResponse struct {
 	Status            Status         `json:"status" gorm:"type:varchar(20);default:'UNDER_REVIEW'"`
 	Condition         string         `json:"condition"`
 	UserID            uuid.UUID      `json:"user_id"`
+	University        string         `json:"university"`
 	BrandName         string         `json:"brand_name"`
 	User              PublicUser     `json:"user"`
 	CreatedAt         time.Time      `json:"created_at"`
@@ -178,12 +180,13 @@ type StoreSetting struct {
 }
 
 type Suggestion struct {
-	Type      string `json:"type"` // "keyword", "category", "brand"
-	Text      string `json:"text"`
-	Category  string `json:"category,omitempty"`
-	Brand     string `json:"brand,omitempty"`
-	Count     int    `json:"count,omitempty"`
-	ProductID string `json:"product_id,omitempty"`
+	Type       string `json:"type"` // "keyword", "category", "brand"
+	Text       string `json:"text"`
+	Category   string `json:"category,omitempty"`
+	Brand      string `json:"brand,omitempty"`
+	University string `json:"university,omitempty"`
+	Count      int    `json:"count,omitempty"`
+	ProductID  string `json:"product_id,omitempty"`
 }
 
 type DashboardResponse struct {

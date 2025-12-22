@@ -614,7 +614,7 @@ func SearchProducts(db *gorm.DB) echo.HandlerFunc {
 
 		var products []models.Products
 
-		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ?", searchTerm, searchTerm, searchTerm).Limit(20).Find(&products).Error; err != nil {
+		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ? OR LOWER(university) LIKE ?", searchTerm, searchTerm, searchTerm, searchTerm).Limit(20).Find(&products).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch search results", err)
 		}
 
@@ -622,6 +622,7 @@ func SearchProducts(db *gorm.DB) echo.HandlerFunc {
 
 		categoryMap := make(map[string]int)
 		brandMap := make(map[string]int)
+		universityMap := make(map[string]int)
 
 		for _, p := range products {
 
@@ -630,6 +631,9 @@ func SearchProducts(db *gorm.DB) echo.HandlerFunc {
 			}
 			if p.BrandName != "" {
 				categoryMap[p.BrandName]++
+			}
+			if p.University != "" {
+				universityMap[p.University]++
 			}
 
 		}
@@ -661,6 +665,15 @@ func SearchProducts(db *gorm.DB) echo.HandlerFunc {
 				Text:  query,
 				Brand: brand,
 				Count: count,
+			})
+		}
+
+		for university, count := range universityMap {
+			suggestions = append(suggestions, models.Suggestion{
+				Type:       "university",
+				Text:       query,
+				University: university,
+				Count:      count,
 			})
 		}
 
@@ -703,7 +716,7 @@ func GetTotalProductsByCatgory(db *gorm.DB) echo.HandlerFunc {
 
 		var results []Result
 
-		if err := db.Model(&products).Select("category_name as category, COUNT(*)  as total").Group("category_name").Scan(&results).Error; err != nil {
+		if err := db.Model(&products).Where("status = ?", models.StatusOngoing).Select("category_name as category, COUNT(*)  as total").Group("category_name").Scan(&results).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve product counts", err)
 		}
 
@@ -717,7 +730,7 @@ func GetSearchResults(db *gorm.DB) echo.HandlerFunc {
 		category := c.QueryParam("category")
 		brand := c.QueryParam("brand")
 		page := c.QueryParam("page")
-
+		university := c.QueryParam("university")
 		if page == "" {
 			page = "1"
 		}
@@ -738,6 +751,10 @@ func GetSearchResults(db *gorm.DB) echo.HandlerFunc {
 
 		if brand != "" {
 			dbQuery = dbQuery.Where("LOWER(brand_name) = ?", strings.ToLower(brand))
+		}
+
+		if university != "" {
+			dbQuery = dbQuery.Where("LOWER(university) = ?", strings.ToLower(university))
 		}
 
 		var total int64
