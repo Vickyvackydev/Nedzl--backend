@@ -80,7 +80,7 @@ func main() {
 
 	// CORS configuration for production deployment
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://localhost:5175", "http://localhost:5174", "http://localhost:5173", "https://nedzl-market.vercel.app"},
+		AllowOrigins:     []string{"http://localhost:5175", "http://localhost:5174", "http://localhost:5173", "https://nedzl-market.vercel.app", "https://nedzl.com"},
 		AllowMethods:     []string{echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 		AllowCredentials: true,
