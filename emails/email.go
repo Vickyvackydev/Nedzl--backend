@@ -270,7 +270,7 @@ func SendAccountVerifiedMail(to, username string) error {
                 <p>Log in to your account now to get started with your marketplace journey.</p>
 
                 <div style="text-align: center; margin: 35px 0;">
-                    <a href="https://nedzl-market.vercel.app/login" class="btn">Login to My Account</a>
+                    <a href="https://nedzl.com/login" class="btn">Login to My Account</a>
                 </div>
 
                 <p>Thank you for choosing NedZl!</p>
@@ -302,7 +302,7 @@ func SendProductReactivationEmail(to, username, productname, productID string) e
 	apiKey := os.Getenv("RESEND_API_KEY")
 	client := resend.NewClient(apiKey)
 
-	productLink := fmt.Sprintf("https://nedzl.com/product/%s", productID)
+	productLink := fmt.Sprintf("https://nedzl.com/product-details/%s", productID)
 
 	html := fmt.Sprintf(`
     <!DOCTYPE html>
@@ -408,7 +408,7 @@ func SendProductClosureEmail(to, username, productname string) error {
                 </div>
 
                 <div style="text-align: center; margin-top: 35px;">
-                    <a href="https://nedzl.com/dashboard/products" style="display: inline-block; background: #4A5568; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Go to Dashboard</a>
+                    <a href="https://nedzl.com" style="display: inline-block; background: #4A5568; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Go to Dashboard</a>
                 </div>
 
                 <p style="margin-top: 30px;">Thank you for using NedZl Marketplace.</p>
