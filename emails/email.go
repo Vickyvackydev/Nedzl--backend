@@ -32,23 +32,52 @@ func SendVerificationMail(to, username, token string) error {
 
 	verificationLink := fmt.Sprintf(`https://nedzl.com/auth/verify?token=%s&email=%s`, token, to)
 
-	html := fmt.Sprintf(`<html>
-        <body style="background:#F5F5F5;padding:40px;font-family:Arial;">
-            <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
-                <h2 style="color:#07B463;text-align:center;">NedZl</h2>
-                <p>Hello %s,</p>
-                <p>Click the button below to verify your email address:</p>
-
-                <a href="%s" 
-                   style="background:#07B463;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;">
-                    Verify Email
-                </a>
-
-                <p>If button does not work, copy link below:</p>
-                <p style="word-break:break-all;color:#07B463;">%s</p>
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 20px; margin-top: 0; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; transition: background 0.3s ease; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+            .social-links { margin-top: 10px; }
+            .social-links a { color: #07B463; text-decoration: none; margin: 0 10px; font-weight: 600; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
             </div>
-        </body>
-        </html>`, username, verificationLink, verificationLink)
+            <div class="content">
+                <h2>Welcome to NedZl, %s!</h2>
+                <p>We're excited to have you join our marketplace. To get started, please verify your email address by clicking the button below:</p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="%s" class="btn">Verify My Email</a>
+                </div>
+
+                <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #07B463; font-size: 14px;">%s</p>
+
+                <p style="margin-top: 30px;">If you didn't create an account with us, you can safely ignore this email.</p>
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>`, username, verificationLink, verificationLink)
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -67,19 +96,55 @@ func SendUserDeactivationEmail(to, username string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
 
 	client := resend.NewClient(apiKey)
-	html := fmt.Sprintf(`   <html><body style="background:#F5F5F5;padding:40px;font-family:Arial;">
-            <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
-                <h2 style="color:#07B463;text-align:center;">NedZl</h2>
-                <p>Hello %s,</p>
-                <p>Your NedZl account has been <strong style="color:#07B463;">deactivated</strong>.</p>
-                <p>If this is an error, contact support team.</p>
-
-                <a href="mailto:support@nedzl.com"
-                   style="background:#07B463;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;">
-                    Contact Support
-                </a>
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #4A5568; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #4A5568; font-size: 20px; margin-top: 0; }
+            .alert-card { background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; padding: 20px; margin: 25px 0; border-left: 4px solid #F56565; }
+            .btn { display: inline-block; background: #4A5568; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+            .social-links { margin-top: 10px; }
+            .social-links a { color: #4A5568; text-decoration: none; margin: 0 10px; font-weight: 600; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
             </div>
-        </body></html>`, username)
+            <div class="content">
+                <h2>Hello %s,</h2>
+                
+                <div class="alert-card">
+                    <p style="margin: 0; font-weight: 600; color: #C53030;">Important Notice</p>
+                    <p style="margin: 5px 0 0 0;">Your NedZl account has been <strong style="color: #C53030;">deactivated</strong>.</p>
+                </div>
+
+                <p>If you believe this has happened in error, or if you would like to appeal this decision, please reach out to our support team.</p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="mailto:support@nedzl.com" class="btn">Contact Support</a>
+                </div>
+
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>`, username)
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -97,20 +162,63 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
 	apiKey := os.Getenv("RESEND_API_KEY")
 	// product mail
 	client := resend.NewClient(apiKey)
-	html := fmt.Sprintf(`<html><body style="background:#F5F5F5;padding:40px;font-family:Arial;">
-            <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
-                <h2 style="color:#07B463;text-align:center;">NedZl</h2>
-                <p>Hello %s,</p>
-                <p>Your product <strong>"%s"</strong> has been removed from NedZl.</p>
-                <p>Reason: %s</p>
-                <p>If you think this is an error, contact support.</p>
-
-                <a href="mailto:support@nedzl.com"
-                   style="background:#07B463;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;">
-                    Contact Support
-                </a>
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #4A5568; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #4A5568; font-size: 20px; margin-top: 0; }
+            .product-card { background: #f9fafb; border: 1px solid #edf2f7; border-radius: 8px; padding: 20px; margin: 25px 0; border-left: 4px solid #4A5568; }
+            .product-name { font-size: 18px; font-weight: 600; color: #2d3748; margin-bottom: 5px; }
+            .reason-label { display: block; font-size: 12px; font-weight: 700; color: #718096; text-transform: uppercase; margin-bottom: 4px; }
+            .reason-box { background: #fffaf0; border: 1px solid #fbd38d; border-radius: 6px; padding: 12px; margin-top: 10px; font-size: 14px; color: #7b341e; }
+            .btn { display: inline-block; background: #4A5568; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+            .social-links { margin-top: 10px; }
+            .social-links a { color: #4A5568; text-decoration: none; margin: 0 10px; font-weight: 600; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
             </div>
-        </body></html>`, username, productname, reason)
+            <div class="content">
+                <h2>Hello %s,</h2>
+                <p>We are writing to let you know that your product listing has been <strong style="color: #4A5568;">removed</strong> from the NedZl marketplace.</p>
+                
+                <div class="product-card">
+                    <span class="reason-label">Product Removed</span>
+                    <div class="product-name">%s</div>
+                    <div class="reason-box">
+                        <strong>Reason provided:</strong><br>
+                        %s
+                    </div>
+                </div>
+
+                <p>If you think this is a mistake, or if you'd like to understand more about our listing policies, please feel free to contact our support team.</p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="mailto:support@nedzl.com" class="btn">Contact Support</a>
+                </div>
+
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>`, username, productname, reason)
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
 		To:      []string{to},
@@ -127,18 +235,56 @@ func SendAccountVerifiedMail(to, username string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
 
 	client := resend.NewClient(apiKey)
-	html := fmt.Sprintf(`<html><body style="background:#F5F5F5;padding:40px;font-family:Arial;">
-            <div style="max-width:600px;margin:auto;background:#fff;padding:30px;border-radius:10px;">
-                <h2 style="color:#07B463;text-align:center;">NedZl</h2>
-                <p>Hello %s,</p>
-                <p>Your account has been successfully verified! You can now log in and start using NedZl.</p>
-                
-                <a href="https://nedzl-market.vercel.app/login" 
-                   style="background:#07B463;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:20px;">
-                    Login to Account
-                </a>
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 20px; margin-top: 0; }
+            .success-card { background: #e6fffa; border: 1px solid #b2f5ea; border-radius: 8px; padding: 20px; margin: 25px 0; border-left: 4px solid #07B463; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+            .social-links { margin-top: 10px; }
+            .social-links a { color: #07B463; text-decoration: none; margin: 0 10px; font-weight: 600; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
             </div>
-        </body></html>`, username)
+            <div class="content">
+                <h2>Congratulations, %s!</h2>
+                
+                <div class="success-card">
+                    <p style="margin: 0; font-weight: 600; color: #234e52;">Account Verified Successfully</p>
+                    <p style="margin: 5px 0 0 0;">Your NedZl account has been fully verified. You can now start exploring the marketplace and listing your products.</p>
+                </div>
+
+                <p>Log in to your account now to get started with your marketplace journey.</p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="https://nedzl-market.vercel.app/login" class="btn">Login to My Account</a>
+                </div>
+
+                <p>Thank you for choosing NedZl!</p>
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>`, username)
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
