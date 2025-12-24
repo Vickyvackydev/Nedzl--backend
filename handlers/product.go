@@ -213,7 +213,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 
 		if productName == "" || productPrice == "" || marketPriceFrom == "" || marketPriceTo == "" ||
 			categoryName == "" || isNegotiable == "" || description == "" || state == "" || brandName == "" ||
-			addressInState == "" || condition == "" {
+			addressInState == "" || condition == "" || university == "" {
 			return utils.ResponseError(c, http.StatusBadRequest, "All fields are required", nil)
 		}
 
@@ -508,6 +508,7 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 			query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 		}
 
+		query = query.Order("created_at DESC")
 		var total int64
 		query.Model(&models.Products{}).Count(&total)
 		if err := query.Limit(limit).Offset(offset).Find(&products).Error; err != nil {
