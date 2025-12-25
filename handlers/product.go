@@ -842,19 +842,19 @@ func ToggleLike(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product id", err)
 		}
 
-		user, ok := c.Get("user").(models.User)
+		uID, ok := c.Get("user_id").(uuid.UUID)
 		if !ok {
 			return utils.ResponseError(c, http.StatusUnauthorized, "Unauthorized", nil)
 		}
 
 		var like models.ProductLike
-		err = db.Where("product_id = ? AND user_id = ?", puid, user.ID).First(&like).Error
+		err = db.Where("product_id = ? AND user_id = ?", puid, uID).First(&like).Error
 
 		if err == gorm.ErrRecordNotFound {
 			// Like the product
 			newLike := models.ProductLike{
 				ProductID: puid,
-				UserID:    user.ID,
+				UserID:    uID,
 			}
 			if err := db.Create(&newLike).Error; err != nil {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Could not like product", err)
