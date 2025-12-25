@@ -56,6 +56,7 @@ func ConvertToProductResponse(product models.Products, isLiked bool) models.Prod
 		BrandName:         product.BrandName,
 		UserID:            product.UserID,
 		User:              publicUser,
+		University:        product.University,
 		CreatedAt:         product.CreatedAt,
 		UpdatedAt:         product.UpdatedAt,
 		DeletedAt:         product.DeletedAt,
