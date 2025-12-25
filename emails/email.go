@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/resend/resend-go/v3"
 )
@@ -25,12 +26,15 @@ func InitEmailClient() {
 	})
 }
 
-func SendVerificationMail(to, username, token string) error {
+func SendVerificationMail(to, username, token string, expiryTime time.Time) error {
 	if Client == nil {
 		return fmt.Errorf("email client not initialized")
 	}
 
 	verificationLink := fmt.Sprintf(`https://nedzl.com/auth/verify?token=%s&email=%s`, token, to)
+
+	// Format expiry time in a user-friendly way
+	expiryFormatted := expiryTime.Format("3:04 PM MST")
 
 	html := fmt.Sprintf(`
     <!DOCTYPE html>
@@ -45,6 +49,7 @@ func SendVerificationMail(to, username, token string) error {
             .content { padding: 40px; color: #333333; line-height: 1.6; }
             .content h2 { color: #07B463; font-size: 20px; margin-top: 0; }
             .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; transition: background 0.3s ease; }
+            .expiry-notice { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 20px 0; border-radius: 4px; color: #856404; font-size: 14px; }
             .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
             .social-links { margin-top: 10px; }
             .social-links a { color: #07B463; text-decoration: none; margin: 0 10px; font-weight: 600; }
@@ -63,6 +68,10 @@ func SendVerificationMail(to, username, token string) error {
                     <a href="%s" class="btn">Verify My Email</a>
                 </div>
 
+                <div class="expiry-notice">
+                    <strong>⏰ Important:</strong> This verification link will expire at <strong>%s</strong> (in 5 minutes). Please verify your email soon!
+                </div>
+
                 <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
                 <p style="word-break: break-all; color: #07B463; font-size: 14px;">%s</p>
 
@@ -77,7 +86,7 @@ func SendVerificationMail(to, username, token string) error {
             </div>
         </div>
     </body>
-    </html>`, username, verificationLink, verificationLink)
+    </html>`, username, verificationLink, expiryFormatted, verificationLink)
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",

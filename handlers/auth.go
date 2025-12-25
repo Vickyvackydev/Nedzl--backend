@@ -104,14 +104,18 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 
 		_, token := generateVerificationToken()
 
+		// Set token expiration to 5 minutes from now
+		expiryTime := time.Now().Add(5 * time.Minute)
+
 		user := models.User{
-			UserName:      req.UserName,
-			Email:         req.Email,
-			Role:          req.Role,
-			PhoneNumber:   req.PhoneNumber,
-			Password:      string(hash),
-			EmailToken:    token,
-			EmailVerified: false,
+			UserName:         req.UserName,
+			Email:            req.Email,
+			Role:             req.Role,
+			PhoneNumber:      req.PhoneNumber,
+			Password:         string(hash),
+			EmailToken:       token,
+			EmailTokenExpiry: &expiryTime,
+			EmailVerified:    false,
 		}
 
 		if req.Role == "ADMIN" {
@@ -123,7 +127,7 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		if req.Role != "ADMIN" {
-			err = emails.SendVerificationMail(req.Email, req.UserName, token)
+			err = emails.SendVerificationMail(req.Email, req.UserName, token, expiryTime)
 			if err != nil {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to send verification email", err)
 			}
@@ -213,8 +217,15 @@ func VerifyEmail(db *gorm.DB) echo.HandlerFunc {
 		if err := db.Where("email_token = ?", token).First(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusBadRequest, "Invalid Token", err)
 		}
+
+		// Check if token has expired
+		if user.EmailTokenExpiry != nil && time.Now().After(*user.EmailTokenExpiry) {
+			return utils.ResponseError(c, http.StatusBadRequest, "Verification token has expired. Please request a new verification email.", nil)
+		}
+
 		user.EmailVerified = true
 		user.EmailToken = ""
+		user.EmailTokenExpiry = nil
 
 		if err := db.Save(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to verify email", err)
