@@ -137,6 +137,7 @@ func main() {
 	auth.POST("/admin/feature-products/:box_number", handlers.UpdateFeaturedSection(db.DB))
 	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB), jwtMiddleware.OptionalAuthMiddleware)
 	auth.GET("/admin/feature-products", handlers.GetFeaturedSections(db.DB))
+	auth.DELETE("/admin/feature-products", handlers.DeleteFeaturedProducts(db.DB))
 	auth.DELETE("/admin/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
 	auth.DELETE("/admin/users/:id/delete", handlers.DeleteUser(db.DB))
 

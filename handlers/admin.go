@@ -676,3 +676,15 @@ func DeleteAdminProduct(db *gorm.DB) echo.HandlerFunc {
 		return utils.ResponseSucess(c, http.StatusOK, "Product deleted successfully", nil)
 	}
 }
+
+func DeleteFeaturedProducts(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// Delete all featured sections (boxes + their products)
+		// Using Where("1 = 1") to explicitly allow global delete
+		if err := db.Where("1 = 1").Delete(&models.FeaturedSection{}).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete all featured sections", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "All featured sections deleted successfully", nil)
+	}
+}
