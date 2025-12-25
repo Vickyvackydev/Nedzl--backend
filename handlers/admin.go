@@ -679,10 +679,15 @@ func DeleteAdminProduct(db *gorm.DB) echo.HandlerFunc {
 
 func DeleteFeaturedProducts(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		// Delete all featured sections (boxes + their products)
-		// Using Where("1 = 1") to explicitly allow global delete
+		// Delete in correct order to respect foreign key constraints:
+		// 1. First delete all products from featured sections
+		if err := db.Where("1 = 1").Delete(&models.FeaturedSectionProduct{}).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete featured section products", err)
+		}
+
+		// 2. Then delete all featured sections (the boxes themselves)
 		if err := db.Where("1 = 1").Delete(&models.FeaturedSection{}).Error; err != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete all featured sections", err)
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete featured sections", err)
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "All featured sections deleted successfully", nil)
