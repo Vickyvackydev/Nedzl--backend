@@ -115,6 +115,7 @@ func main() {
 	auth.DELETE("/products/:id/user", handlers.DeleteUserProduct(db.DB))
 	auth.DELETE("/products/:id", handlers.DeleteUserProduct(db.DB))
 	auth.PATCH("/products/update/:id/status", handlers.UpdateProductStatus(db.DB))
+	auth.POST("/products/:id/toggle-like", handlers.ToggleLike(db.DB))
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)

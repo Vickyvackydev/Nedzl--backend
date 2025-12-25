@@ -136,6 +136,15 @@ type Products struct {
 	UpdatedAt         time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index"`
 	ClosedAt          *time.Time     `gorm:"index"`
+	Views             int64          `json:"views" gorm:"default:0"`
+	Likes             int64          `json:"likes" gorm:"default:0"`
+}
+
+type ProductLike struct {
+	ID        uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ProductID uuid.UUID `gorm:"type:uuid;index;not null" json:"product_id"`
+	UserID    uuid.UUID `gorm:"type:uuid;index;not null" json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ProductResponse struct {
@@ -160,6 +169,8 @@ type ProductResponse struct {
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 	DeletedAt         gorm.DeletedAt `json:"-"`
+	Views             int64          `json:"views"`
+	Likes             int64          `json:"likes"`
 }
 type StoreSetting struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`

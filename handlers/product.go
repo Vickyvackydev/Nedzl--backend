@@ -59,6 +59,8 @@ func ConvertToProductResponse(product models.Products) models.ProductResponse {
 		CreatedAt:         product.CreatedAt,
 		UpdatedAt:         product.UpdatedAt,
 		DeletedAt:         product.DeletedAt,
+		Views:             product.Views,
+		Likes:             product.Likes,
 	}
 }
 
@@ -571,6 +573,9 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusNotFound, "Product not found", err)
 		}
 
+		// Increment view count
+		db.Model(&product).Update("views", gorm.Expr("views + ?", 1))
+
 		// Convert to safe response without password
 		response := ConvertToProductResponse(product)
 
@@ -792,4 +797,44 @@ func GetSearchResults(db *gorm.DB) echo.HandlerFunc {
 	}
 }
 
-//
+func ToggleLike(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		productID := c.Param("id")
+		puid, err := uuid.Parse(productID)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product id", err)
+		}
+
+		user, ok := c.Get("user").(models.User)
+		if !ok {
+			return utils.ResponseError(c, http.StatusUnauthorized, "Unauthorized", nil)
+		}
+
+		var like models.ProductLike
+		err = db.Where("product_id = ? AND user_id = ?", puid, user.ID).First(&like).Error
+
+		if err == gorm.ErrRecordNotFound {
+			// Like the product
+			newLike := models.ProductLike{
+				ProductID: puid,
+				UserID:    user.ID,
+			}
+			if err := db.Create(&newLike).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Could not like product", err)
+			}
+			// Update likes count on product
+			db.Model(&models.Products{}).Where("id = ?", puid).Update("likes", gorm.Expr("likes + ?", 1))
+			return utils.ResponseSucess(c, http.StatusOK, "Product liked", nil)
+		} else if err == nil {
+			// Unlike the product
+			if err := db.Delete(&like).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Could not unlike product", err)
+			}
+			// Update likes count on product
+			db.Model(&models.Products{}).Where("id = ?", puid).Update("likes", gorm.Expr("likes - ?", 1))
+			return utils.ResponseSucess(c, http.StatusOK, "Product unliked", nil)
+		}
+
+		return utils.ResponseError(c, http.StatusInternalServerError, "Database error", err)
+	}
+}
