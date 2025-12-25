@@ -251,7 +251,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		files := form.File["new_images"]
-		if len(files) == 0 || len(imageUrlsStr) == 0 {
+		if len(files) == 0 && len(imageUrlsStr) == 0 {
 			return utils.ResponseError(c, http.StatusBadRequest, "You must upload at least one image", nil)
 		}
 
