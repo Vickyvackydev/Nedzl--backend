@@ -167,10 +167,22 @@ func GetFeaturedSections(db *gorm.DB) echo.HandlerFunc {
 					Find(&products)
 			}
 
+			var likedMap = make(map[uuid.UUID]bool)
+			if userIdVal := c.Get("user_id"); userIdVal != nil {
+				if uid, ok := userIdVal.(uuid.UUID); ok {
+					var likedIDs []uuid.UUID
+					db.Model(&models.ProductLike{}).Where("user_id = ?", uid).Pluck("product_id", &likedIDs)
+					for _, id := range likedIDs {
+						likedMap[id] = true
+					}
+				}
+			}
+
 			safeResponse := make([]models.ProductResponse, 0)
 
 			for _, p := range products {
-				safeResponse = append(safeResponse, ConvertToProductResponse(p))
+				isLiked := likedMap[p.ID]
+				safeResponse = append(safeResponse, ConvertToProductResponse(p, isLiked))
 			}
 			response = append(response, map[string]interface{}{
 				"box_number":    sec.BoxNumber,

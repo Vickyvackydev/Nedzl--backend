@@ -171,6 +171,7 @@ type ProductResponse struct {
 	DeletedAt         gorm.DeletedAt `json:"-"`
 	Views             int64          `json:"views"`
 	Likes             int64          `json:"likes"`
+	IsLikedByMe       bool           `json:"is_liked_by_me"`
 }
 type StoreSetting struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`

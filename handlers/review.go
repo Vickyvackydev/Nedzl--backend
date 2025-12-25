@@ -123,7 +123,17 @@ func GetPublicReviews(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, 404, "Product not found", err)
 		}
 
-		productDetails := ConvertToProductResponse(product)
+		// Check if user has liked this product
+		isLiked := false
+		if userIdVal := c.Get("user_id"); userIdVal != nil {
+			if uid, ok := userIdVal.(uuid.UUID); ok {
+				var count int64
+				db.Model(&models.ProductLike{}).Where("product_id = ? AND user_id = ?", product.ID, uid).Count(&count)
+				isLiked = count > 0
+			}
+		}
+
+		productDetails := ConvertToProductResponse(product, isLiked)
 		var response []models.ReviewResponse
 
 		for _, r := range reviews {
@@ -159,7 +169,13 @@ func GetCustomerMyReviews(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		var response []models.ReviewResponse
-		productDetails := ConvertToProductResponse(product)
+		// Check if user has liked this product
+		isLiked := false
+		var count int64
+		db.Model(&models.ProductLike{}).Where("product_id = ? AND user_id = ?", product.ID, userID).Count(&count)
+		isLiked = count > 0
+
+		productDetails := ConvertToProductResponse(product, isLiked)
 
 		for _, r := range reviews {
 
@@ -199,7 +215,13 @@ func GetSellerReviews(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		var response []models.ReviewResponse
-		productDetails := ConvertToProductResponse(product)
+		// Check if user has liked this product
+		isLiked := false
+		var count int64
+		db.Model(&models.ProductLike{}).Where("product_id = ? AND user_id = ?", product.ID, userID).Count(&count)
+		isLiked = count > 0
+
+		productDetails := ConvertToProductResponse(product, isLiked)
 
 		for _, r := range reviews {
 

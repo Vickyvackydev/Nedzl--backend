@@ -103,8 +103,8 @@ func main() {
 
 	// -- PRODUCTS ROUTES -- >
 	auth.POST("/products", handlers.CreateProduct(db.DB))
-	e.GET("/products", handlers.GetAllProducts(db.DB))
-	e.GET("/products/:id", handlers.GetSingleProduct(db.DB))
+	e.GET("/products", handlers.GetAllProducts(db.DB), jwtMiddleware.OptionalAuthMiddleware)
+	e.GET("/products/:id", handlers.GetSingleProduct(db.DB), jwtMiddleware.OptionalAuthMiddleware)
 	e.GET("/products/counts", handlers.GetTotalProductsByCatgory(db.DB))
 	e.GET("/store-settings/:id", handlers.GetStoreSettings(db.DB))
 	e.GET("/products/search", handlers.SearchProducts(db.DB))
@@ -135,7 +135,7 @@ func main() {
 	auth.GET("/admin/products", handlers.GetAdminProducts(db.DB))
 	auth.GET("/admin/user/:id", handlers.GetUserDetails(db.DB))
 	auth.POST("/admin/feature-products/:box_number", handlers.UpdateFeaturedSection(db.DB))
-	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB))
+	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB), jwtMiddleware.OptionalAuthMiddleware)
 	auth.GET("/admin/feature-products", handlers.GetFeaturedSections(db.DB))
 	auth.DELETE("/admin/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
 	auth.DELETE("/admin/users/:id/delete", handlers.DeleteUser(db.DB))
@@ -143,7 +143,7 @@ func main() {
 	// -- REVIEW ROUTES -->
 
 	e.POST("/review", handlers.CreateReview(db.DB), jwtMiddleware.OptionalAuthMiddleware)
-	e.GET("/reviews/:product_id", handlers.GetPublicReviews(db.DB))
+	e.GET("/reviews/:product_id", handlers.GetPublicReviews(db.DB), jwtMiddleware.OptionalAuthMiddleware)
 	// Authenticated routes for reviews
 	auth.GET("/reviews/user", handlers.GetCustomerMyReviews(db.DB)) // Get all reviews I (as a customer) have written
 	auth.GET("/reviews/seller", handlers.GetSellerReviews(db.DB))   // Get all reviews on my products (as a seller)

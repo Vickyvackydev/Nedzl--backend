@@ -23,7 +23,7 @@ import (
 // ProductResponse represents a safe product response without sensitive user data
 
 // convertToProductResponse converts a Products model to a safe ProductResponse
-func ConvertToProductResponse(product models.Products) models.ProductResponse {
+func ConvertToProductResponse(product models.Products, isLiked bool) models.ProductResponse {
 	publicUser := models.PublicUser{
 		ID:          product.User.ID,
 		UserName:    product.User.UserName,
@@ -61,6 +61,7 @@ func ConvertToProductResponse(product models.Products) models.ProductResponse {
 		DeletedAt:         product.DeletedAt,
 		Views:             product.Views,
 		Likes:             product.Likes,
+		IsLikedByMe:       isLiked,
 	}
 }
 
@@ -181,7 +182,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		// Convert to safe response without password
-		response := ConvertToProductResponse(products)
+		response := ConvertToProductResponse(products, false)
 
 		return utils.ResponseSucess(c, http.StatusCreated, "Product created successfully", echo.Map{"products": response})
 	}
@@ -317,7 +318,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to load updated product", err)
 		}
 
-		response := ConvertToProductResponse(existingProduct)
+		response := ConvertToProductResponse(existingProduct, false)
 
 		return utils.ResponseSucess(c, http.StatusOK, "Product updated successfully", echo.Map{"data": response})
 	}
@@ -412,11 +413,22 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		// -- CONVERT TO SAFE RESPONSE --
+		var likedMap = make(map[uuid.UUID]bool)
+		if userIdVal := c.Get("user_id"); userIdVal != nil {
+			if uid, ok := userIdVal.(uuid.UUID); ok {
+				var likedIDs []uuid.UUID
+				db.Model(&models.ProductLike{}).Where("user_id = ?", uid).Pluck("product_id", &likedIDs)
+				for _, id := range likedIDs {
+					likedMap[id] = true
+				}
+			}
+		}
 
 		// Convert to safe responses without passwords
 		var responses []models.ProductResponse
 		for _, product := range products {
-			responses = append(responses, ConvertToProductResponse(product))
+			isLiked := likedMap[product.ID]
+			responses = append(responses, ConvertToProductResponse(product, isLiked))
 		}
 
 		totalPages := int(math.Ceil(float64(total) / float64(limit)))
@@ -517,9 +529,17 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch user products", err)
 		}
 
+		var likedMap = make(map[uuid.UUID]bool)
+		var likedIDs []uuid.UUID
+		db.Model(&models.ProductLike{}).Where("user_id = ?", userId).Pluck("product_id", &likedIDs)
+		for _, id := range likedIDs {
+			likedMap[id] = true
+		}
+
 		var responses []models.ProductResponse
 		for _, product := range products {
-			responses = append(responses, ConvertToProductResponse(product))
+			isLiked := likedMap[product.ID]
+			responses = append(responses, ConvertToProductResponse(product, isLiked))
 		}
 
 		totalPages := int(math.Ceil(float64(total) / float64(limit)))
@@ -576,8 +596,18 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 		// Increment view count
 		db.Model(&product).Update("views", gorm.Expr("views + ?", 1))
 
+		// Check if user has liked this product
+		isLiked := false
+		if userIdVal := c.Get("user_id"); userIdVal != nil {
+			if uid, ok := userIdVal.(uuid.UUID); ok {
+				var count int64
+				db.Model(&models.ProductLike{}).Where("product_id = ? AND user_id = ?", product.ID, uid).Count(&count)
+				isLiked = count > 0
+			}
+		}
+
 		// Convert to safe response without password
-		response := ConvertToProductResponse(product)
+		response := ConvertToProductResponse(product, isLiked)
 
 		return utils.ResponseSucess(c, http.StatusOK, "Product fetched", echo.Map{"product": response})
 	}
@@ -594,8 +624,15 @@ func GetUserProduct(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusNotFound, "Product not found or unauthorized", err)
 		}
 
+		// Since this is GetUserProduct, it's the user's own product list view or detail
+		// But they might still want to see if they liked it (unlikely but consistent)
+		isLiked := false
+		var count int64
+		db.Model(&models.ProductLike{}).Where("product_id = ? AND user_id = ?", product.ID, userID).Count(&count)
+		isLiked = count > 0
+
 		// Convert to safe response without password
-		response := ConvertToProductResponse(product)
+		response := ConvertToProductResponse(product, isLiked)
 
 		return utils.ResponseSucess(c, http.StatusOK, "User product fetched successfully", echo.Map{"product": response})
 	}
