@@ -63,16 +63,17 @@ func GetUserById(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		response := models.PublicUser{
-			ID:         user.ID,
-			UserName:   user.UserName,
-			Email:      user.Email,
-			Role:       string(user.Role),
-			ImageUrl:   user.ImageUrl,
-			Location:   user.Location,
-			Status:     user.Status,
-			IsVerified: user.IsVerified,
-			CreatedAt:  user.CreatedAt,
-			UpdatedAt:  user.UpdatedAt,
+			ID:          user.ID,
+			UserName:    user.UserName,
+			Email:       user.Email,
+			Role:        string(user.Role),
+			ImageUrl:    user.ImageUrl,
+			PhoneNumber: user.PhoneNumber,
+			Location:    user.Location,
+			Status:      user.Status,
+			IsVerified:  user.IsVerified,
+			CreatedAt:   user.CreatedAt,
+			UpdatedAt:   user.UpdatedAt,
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "User retrieved successfully", response)

@@ -220,7 +220,23 @@ func VerifyEmail(db *gorm.DB) echo.HandlerFunc {
 
 		// Check if token has expired
 		if user.EmailTokenExpiry != nil && time.Now().After(*user.EmailTokenExpiry) {
-			return utils.ResponseError(c, http.StatusBadRequest, "Verification token has expired. Please request a new verification email.", nil)
+			// Generate new token
+			_, newToken := generateVerificationToken()
+			newExpiry := time.Now().Add(5 * time.Minute)
+
+			// Update user
+			user.EmailToken = newToken
+			user.EmailTokenExpiry = &newExpiry
+			if err := db.Save(&user).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Token expired, but failed to resend new one", err)
+			}
+
+			// Send new email
+			if err := emails.SendVerificationMail(user.Email, user.UserName, newToken, newExpiry); err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Token expired, but failed to send new email", err)
+			}
+
+			return utils.ResponseSucess(c, http.StatusOK, "Your verification token has expired. A new verification link has been sent to your email.", nil)
 		}
 
 		user.EmailVerified = true
