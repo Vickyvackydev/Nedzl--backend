@@ -23,8 +23,10 @@ func UploadToCloudinary(filePath string, folder string) (string, error) {
 	}
 
 	uploadParam := uploader.UploadParams{
-		Folder:       folder,
-		ResourceType: "image",
+		Folder:         folder,
+		ResourceType:   "image",
+		AllowedFormats: []string{"jpg", "png", "jpeg"},
+		Transformation: "w_1280,q_auto",
 	}
 
 	uploadResult, err := cld.Upload.Upload(context.Background(), filePath, uploadParam)
