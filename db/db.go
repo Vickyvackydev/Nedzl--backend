@@ -66,6 +66,7 @@ func ConnectDb() {
 		&models.FeaturedSectionProduct{},
 		&models.CustomerReview{},
 		&models.ProductLike{},
+		&models.Contact{},
 	); err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}
