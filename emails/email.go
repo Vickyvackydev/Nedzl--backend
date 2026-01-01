@@ -443,3 +443,75 @@ func SendProductClosureEmail(to, username, productname string) error {
 	_, err := client.Emails.Send(params)
 	return err
 }
+
+func SendContactEmail(firstName, lastName, email, phoneNumber, message string) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; }
+            .content { padding: 30px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; border-bottom: 2px solid #f0f4f8; padding-bottom: 10px; }
+            .info-table { border-collapse: collapse; width: 100%%; margin: 20px 0; }
+            .info-table td { padding: 10px; border-bottom: 1px solid #f0f4f8; }
+            .info-table .label { font-weight: 700; width: 120px; color: #718096; }
+            .message-box { background: #f9fafb; border-radius: 8px; padding: 20px; margin-top: 20px; border: 1px solid #edf2f7; font-style: italic; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>New Contact Message</h1>
+            </div>
+            <div class="content">
+                <h2>Contact Details</h2>
+                <table class="info-table">
+                    <tr>
+                        <td class="label">Name:</td>
+                        <td>%s %s</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Email:</td>
+                        <td>%s</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Phone:</td>
+                        <td>%s</td>
+                    </tr>
+                </table>
+                
+                <h2>Message</h2>
+                <div class="message-box">
+                    " %s "
+                </div>
+            </div>
+            <div class="footer">
+                <p>This message was sent from the contact form on <a href="https://nedzl.com" style="color: #07B463; text-decoration: none;">NedZl Marketplace</a>.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, firstName, lastName, email, phoneNumber, message)
+
+	params := &resend.SendEmailRequest{
+		From:    "contact@nedzl.com",
+		To:      []string{"Nedzlworld@gmail.com"},
+		ReplyTo: email,
+		Html:    html,
+		Subject: fmt.Sprintf("New contact form message from %s %s", firstName, lastName),
+	}
+
+	fmt.Printf("Sending contact email from %s %s to Nedzlworld@gmail.com\n", firstName, lastName)
+	_, err := Client.Emails.Send(params)
+
+	return err
+}

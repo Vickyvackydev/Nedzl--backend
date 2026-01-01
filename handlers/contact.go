@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"api/emails"
 	"api/models"
 	"api/utils"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -21,6 +23,11 @@ func Contact(db *gorm.DB) echo.HandlerFunc {
 
 		if err := db.Create(&contact).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create a contact mail", err)
+		}
+
+		if err := emails.SendContactEmail(contact.FirstName, contact.LastName, contact.Email, contact.PhoneNumber, contact.Message); err != nil {
+			// We log the error but don't fail the request since the contact was saved to DB
+			fmt.Printf("❌ Failed to send contact email: %v\n", err)
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "Contact mail created successfully", nil)
