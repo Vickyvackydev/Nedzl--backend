@@ -37,7 +37,7 @@ func GetContact(db *gorm.DB) echo.HandlerFunc {
 
 		}
 
-		return utils.ResponseSucess(c, http.StatusOK, "Contact lists retrieved successfully", contact)
+		return utils.ResponseSucess(c, http.StatusOK, "Contact lists retrieved successfully", echo.Map{"data": contact})
 	}
 }
 
