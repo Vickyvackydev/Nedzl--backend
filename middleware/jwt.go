@@ -4,12 +4,20 @@ import (
 	"net/http"
 	"strings"
 
+	"os"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-var jwtSecretKey = []byte("supersecretkey")
+func getJWTSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return []byte("supersecretkey") // Fallback for dev, but should be set in production
+	}
+	return []byte(secret)
+}
 
 func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -20,7 +28,7 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return jwtSecretKey, nil
+			return getJWTSecret(), nil
 		})
 
 		if err != nil || !token.Valid {
@@ -36,6 +44,10 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Set("user_id", uid)
 		} else {
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token claims"})
+		}
+
+		if role, ok := claims["role"].(string); ok {
+			c.Set("role", role)
 		}
 
 		return next(c)
@@ -55,7 +67,7 @@ func OptionalAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return jwtSecretKey, nil
+			return getJWTSecret(), nil
 		})
 
 		// If invalid token, just proceed (or maybe we should log it? For now, treat as guest)
@@ -69,8 +81,21 @@ func OptionalAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 					c.Set("user_id", uid)
 				}
 			}
+			if role, ok := claims["role"].(string); ok {
+				c.Set("role", role)
+			}
 		}
 
+		return next(c)
+	}
+}
+
+func IsAdminMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		role, ok := c.Get("role").(string)
+		if !ok || role != "ADMIN" {
+			return c.JSON(http.StatusForbidden, echo.Map{"error": "Admin access required"})
+		}
 		return next(c)
 	}
 }

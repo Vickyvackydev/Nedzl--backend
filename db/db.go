@@ -22,8 +22,13 @@ func ConnectDb() {
 
 	fmt.Println("🧩 Connecting to database...")
 
+	logLevel := logger.Info
+	if os.Getenv("ENV") != "development" {
+		logLevel = logger.Error
+	}
+
 	db, err := gorm.Open(postgres.Open(dbConnUrl), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logLevel),
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
 		},

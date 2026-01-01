@@ -4,6 +4,7 @@ import (
 	"api/emails"
 	"api/models"
 	"api/utils"
+	"os"
 
 	// "database/sql"
 
@@ -17,7 +18,13 @@ import (
 	"gorm.io/gorm"
 )
 
-var jwtSecretKey = []byte("supersecretkey")
+func getJWTSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return []byte("supersecretkey")
+	}
+	return []byte(secret)
+}
 
 func generateVerificationToken() (string, string) {
 	raw := uuid.NewString()
@@ -172,10 +179,11 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"user_id": user.ID.String(),
+			"role":    string(user.Role),
 			"exp":     time.Now().Add(24 * time.Hour).Unix(), // 24 hours
 		})
 
-		tokenString, _ := token.SignedString(jwtSecretKey)
+		tokenString, _ := token.SignedString(getJWTSecret())
 
 		// return c.JSON(http.StatusOK, echo.Map{"message": "Login succesfully", "token": tokenString, "user": map[string]string{
 		// 	"user_name":    user.UserName,

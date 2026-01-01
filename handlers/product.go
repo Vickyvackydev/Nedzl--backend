@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"path/filepath"
+
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/datatypes"
@@ -124,7 +126,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open image", err)
 			}
 
-			tempFilePath := fmt.Sprintf("/tmp/%s", file.Filename)
+			tempFilePath := filepath.Join(os.TempDir(), filepath.Base(file.Filename))
 			out, err := os.Create(tempFilePath)
 			if err != nil {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
@@ -263,7 +265,7 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open image", err)
 			}
 
-			tempFilePath := fmt.Sprintf("/tmp/%s", file.Filename)
+			tempFilePath := filepath.Join(os.TempDir(), filepath.Base(file.Filename))
 			out, err := os.Create(tempFilePath)
 			if err != nil {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)

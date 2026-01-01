@@ -115,34 +115,41 @@ func main() {
 	auth.GET("/products/:id/user", handlers.GetUserProduct(db.DB))
 	auth.DELETE("/products/:id/user", handlers.DeleteUserProduct(db.DB))
 	auth.DELETE("/products/:id", handlers.DeleteUserProduct(db.DB))
-	auth.PATCH("/products/update/:id/status", handlers.UpdateProductStatus(db.DB))
 	auth.POST("/products/:id/toggle-like", handlers.ToggleLike(db.DB))
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)
 
 	auth.PATCH("/users/update", handlers.UpdateUser(db.DB))
-	auth.POST("/users/verify/:id", handlers.VerifyUser(db.DB))
-	auth.PATCH("/users/update/:id/status", handlers.UpdateUserStatus(db.DB))
 	auth.POST("/store-settings", handlers.CreateStoreSettings(db.DB))
 
 	auth.GET("/users", handlers.GetUsers(db.DB))
 	auth.GET("/users/:id", handlers.GetUserById(db.DB))
 
-	// -- ADMIN ROUTES -->
-	auth.GET("/admin/overview", handlers.GetDashboardOverview(db.DB))
-	auth.GET("/admin/user/overview", handlers.GetUserDashboardOverview(db.DB))
-	auth.GET("/admin/users", handlers.GetDashboardUsers(db.DB))
-	auth.GET("/admin/products", handlers.GetAdminProducts(db.DB))
-	auth.GET("/admin/user/:id", handlers.GetUserDetails(db.DB))
-	auth.POST("/admin/feature-products/:box_number", handlers.UpdateFeaturedSection(db.DB))
+	// -- ADMIN ROUTES (Secure with AdminMiddleware) -->
+	admin := auth.Group("/admin")
+	admin.Use(jwtMiddleware.IsAdminMiddleware)
+
+	admin.GET("/overview", handlers.GetDashboardOverview(db.DB))
+	admin.GET("/user/overview", handlers.GetUserDashboardOverview(db.DB))
+	admin.GET("/users", handlers.GetDashboardUsers(db.DB))
+	admin.GET("/products", handlers.GetAdminProducts(db.DB))
+	admin.GET("/user/:id", handlers.GetUserDetails(db.DB))
+	admin.POST("/feature-products/:box_number", handlers.UpdateFeaturedSection(db.DB))
+	admin.GET("/feature-products", handlers.GetFeaturedSections(db.DB))
+	admin.GET("/contact", handlers.GetContact(db.DB))
+	admin.DELETE("/contact/:id", handlers.DeleteContact(db.DB))
+	admin.DELETE("/feature-products", handlers.DeleteFeaturedProducts(db.DB))
+	admin.DELETE("/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
+	admin.DELETE("/users/:id/delete", handlers.DeleteUser(db.DB))
+
+	// Global featured products access (optional auth)
 	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB), jwtMiddleware.OptionalAuthMiddleware)
-	auth.GET("/admin/feature-products", handlers.GetFeaturedSections(db.DB))
-	auth.GET("/admin/contact", handlers.GetContact(db.DB))
-	auth.DELETE("/admin/contact/:id", handlers.DeleteContact(db.DB))
-	auth.DELETE("/admin/feature-products", handlers.DeleteFeaturedProducts(db.DB))
-	auth.DELETE("/admin/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
-	auth.DELETE("/admin/users/:id/delete", handlers.DeleteUser(db.DB))
+
+	// Admin-only verification and status updates
+	admin.POST("/users/verify/:id", handlers.VerifyUser(db.DB))
+	admin.PATCH("/users/update/:id/status", handlers.UpdateUserStatus(db.DB))
+	admin.PATCH("/products/update/:id/status", handlers.UpdateProductStatus(db.DB))
 
 	// -- REVIEW ROUTES -->
 

@@ -120,7 +120,7 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 			}
 			defer src.Close()
 
-			tempFilePath := filepath.Join(os.TempDir(), file.Filename)
+			tempFilePath := filepath.Join(os.TempDir(), filepath.Base(file.Filename))
 			out, err := os.Create(tempFilePath)
 			if err != nil {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
