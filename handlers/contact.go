@@ -30,14 +30,14 @@ func Contact(db *gorm.DB) echo.HandlerFunc {
 
 func GetContact(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var contact models.Contact
+		var contact []models.Contact
 
 		if err := db.Find(&contact).Order("created_at DESC").Error; err != nil {
 			return utils.ResponseError(c, 500, "Failed to retrieve contact lists", err)
 
 		}
 
-		return utils.ResponseSucess(c, http.StatusOK, "Contact lists retrieved successfully", echo.Map{"data": contact})
+		return utils.ResponseSucess(c, http.StatusOK, "Contact lists retrieved successfully", contact)
 	}
 }
 
