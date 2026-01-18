@@ -81,7 +81,7 @@ func SendVerificationMail(to, username, token string, expiryTime time.Time) erro
             <div class="footer">
                 <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
-                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
@@ -148,7 +148,7 @@ func SendUserDeactivationEmail(to, username string) error {
             <div class="footer">
                 <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
-                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
@@ -222,7 +222,7 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
             <div class="footer">
                 <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
-                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
@@ -288,7 +288,7 @@ func SendAccountVerifiedMail(to, username string) error {
             <div class="footer">
                 <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
-                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
@@ -359,7 +359,7 @@ func SendProductReactivationEmail(to, username, productname, productID string) e
             <div class="footer">
                 <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
-                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
@@ -426,7 +426,7 @@ func SendProductClosureEmail(to, username, productname string) error {
             <div class="footer">
                 <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
-                    <a href="#">Help Center</a> | <a href="#">Terms of Service</a> | <a href="#">Privacy Policy</a>
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
