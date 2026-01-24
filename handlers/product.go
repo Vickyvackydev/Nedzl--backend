@@ -187,6 +187,17 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		// Convert to safe response without password
 		response := ConvertToProductResponse(products, false)
 
+		// Trigger Facebook Auto-Post in a goroutine so it doesn't slow down the response
+		go func(p models.Products) {
+			message := fmt.Sprintf("🛍️ New Product Alert: %s\n\nPrice: ₦%.2f\nCondition: %s\n\nCheck it out on Nedzl!", p.Name, p.ProductPrice, p.Condition)
+			// Adjust the link according to your frontend URL structure
+			link := fmt.Sprintf("https://nedzl.com/product/%s", p.ID.String())
+
+			if err := utils.PostToFacebook(message, link); err != nil {
+				log.Printf("Facebook auto-post failed for product %s: %v", p.ID, err)
+			}
+		}(products)
+
 		return utils.ResponseSucess(c, http.StatusCreated, "Product created successfully", echo.Map{"products": response})
 	}
 }
