@@ -1,17 +1,16 @@
 package utils
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 )
 
 // PostToFacebook sends a message and a link to a configured Facebook Page.
-func PostToFacebook(message string, link string) error {
+func PostToFacebook(message string, imageUrl string, link string) error {
 	pageID := os.Getenv("FB_PAGE_ID")
 	accessToken := os.Getenv("FB_PAGE_ACCESS_TOKEN")
 
@@ -22,20 +21,26 @@ func PostToFacebook(message string, link string) error {
 	}
 
 	// Graph API Endpoint for posting to the feed
-	url := fmt.Sprintf("https://graph.facebook.com/v21.0/%s/feed", pageID)
+	endpoint := fmt.Sprintf("https://graph.facebook.com/v21.0/%s/photos", pageID)
 
-	payload := map[string]string{
-		"message":      message,
-		"link":         link,
-		"access_token": accessToken,
-	}
+	caption := fmt.Sprintf("%s\n\n🛒 Buy now 👉 %s", message, link)
 
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal facebook payload: %w", err)
-	}
+	form := url.Values{}
+	form.Add("url", imageUrl)
+	form.Add("caption", caption)
+	form.Add("access_token", accessToken)
+	// payload := map[string]string{
+	// 	"message":      message,
+	// 	"link":         link,
+	// 	"access_token": accessToken,
+	// }
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	// jsonData, err := json.Marshal(payload)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to marshal facebook payload: %w", err)
+	// }
+
+	resp, err := http.PostForm(endpoint, form)
 	if err != nil {
 		return fmt.Errorf("failed to send request to facebook: %w", err)
 	}

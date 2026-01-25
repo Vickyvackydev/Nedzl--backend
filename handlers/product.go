@@ -126,7 +126,10 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open image", err)
 			}
 
-			tempFilePath := filepath.Join(os.TempDir(), filepath.Base(file.Filename))
+			tempFilePath := filepath.Join(
+				os.TempDir(),
+				uuid.New().String()+"_"+filepath.Base(file.Filename),
+			)
 			out, err := os.Create(tempFilePath)
 			if err != nil {
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
@@ -144,6 +147,9 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			if err != nil {
 				log.Printf("Cloudinary upload failed: %v", err)
 				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to upload image", err)
+			}
+			if url == "" {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Received empty URL from Cloudinary", nil)
 			}
 
 			imageUrls = append(imageUrls, url)
@@ -190,11 +196,19 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		// Trigger Facebook Auto-Post in a goroutine so it doesn't slow down the response
 		go func(p models.Products) {
 			message := fmt.Sprintf("🛍️ New Product Alert: %s\n\nPrice: ₦%.2f\nCondition: %s\n\nCheck it out on Nedzl!", p.Name, p.ProductPrice, p.Condition)
-			// Adjust the link according to your frontend URL structure
-			link := fmt.Sprintf("https://nedzl.com/product/%s", p.ID.String())
 
-			if err := utils.PostToFacebook(message, link); err != nil {
+			link := fmt.Sprintf("https://nedzl.com/product-details/%s", p.ID.String())
+			igCaption := fmt.Sprintf("%s\n\nLink in bio or copy: %s", message, link)
+			if len(imageUrls) == 0 {
+				return
+			}
+			imageUrl := imageUrls[0] // Use the first image as the preview
+
+			if err := utils.PostToFacebook(message, imageUrl, link); err != nil {
 				log.Printf("Facebook auto-post failed for product %s: %v", p.ID, err)
+			}
+			if err := utils.PostToInstagram(igCaption, imageUrl); err != nil {
+				log.Printf("Instagram auto-post failed for product %s: %v", p.ID, err)
 			}
 		}(products)
 
