@@ -32,18 +32,21 @@ type StoreResponse struct {
 
 func convertToStoreResponse(settings models.StoreSetting) StoreResponse {
 	publicUser := models.PublicUser{
-		ID:          settings.User.ID,
-		UserName:    settings.User.UserName,
-		Email:       settings.User.Email,
-		Role:        string(settings.User.Role),
-		PhoneNumber: settings.User.PhoneNumber,
-		ImageUrl:    settings.User.ImageUrl,
-		Location:    settings.User.Location,
-		Status:      settings.User.Status,
-		IsVerified:  settings.User.IsVerified,
-		CreatedAt:   settings.User.CreatedAt,
-		UpdatedAt:   settings.User.UpdatedAt,
-		DeletedAt:   settings.User.DeletedAt,
+		ID:            settings.User.ID,
+		UserName:      settings.User.UserName,
+		Email:         settings.User.Email,
+		Role:          string(settings.User.Role),
+		PhoneNumber:   settings.User.PhoneNumber,
+		ImageUrl:      settings.User.ImageUrl,
+		Location:      settings.User.Location,
+		Status:        settings.User.Status,
+		IsVerified:    settings.User.IsVerified,
+		ReferralCode:  settings.User.ReferralCode,
+		ReferralBy:    settings.User.ReferralBy,
+		ReferralCount: settings.User.ReferralCount,
+		CreatedAt:     settings.User.CreatedAt,
+		UpdatedAt:     settings.User.UpdatedAt,
+		DeletedAt:     settings.User.DeletedAt,
 	}
 
 	return StoreResponse{

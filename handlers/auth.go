@@ -121,15 +121,14 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		expiryTime := time.Now().Add(5 * time.Minute)
 
 		var referer models.User
-		if referer.Email == req.Email {
-			return utils.ResponseError(c, http.StatusBadRequest, "You cannot refer yourself", nil)
-		}
-
 		var referralBy *models.ReferedBy = nil
 		if req.ReferalCode != "" {
-
 			if err := db.Where("referral_code = ?", req.ReferalCode).First(&referer).Error; err != nil {
 				return utils.ResponseError(c, http.StatusBadRequest, "Invalid referral code", err)
+			}
+
+			if referer.Email == req.Email {
+				return utils.ResponseError(c, http.StatusBadRequest, "You cannot refer yourself", nil)
 			}
 
 			referralBy = &models.ReferedBy{
@@ -137,7 +136,6 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 				UserName: referer.UserName,
 				Email:    referer.Email,
 			}
-
 		}
 
 		if referer.ID == uuid.Nil {
@@ -176,14 +174,19 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 			}
 		}
 
-		return utils.ResponseSucess(c, http.StatusCreated, "Registered successfully", map[string]string{
+		response := map[string]string{
 			"user_name":     user.UserName,
 			"email":         user.Email,
 			"phone_number":  user.PhoneNumber,
 			"role":          string(user.Role),
 			"referral_code": user.ReferralCode,
-			"referral_by":   referralBy.ID.String(),
-		})
+		}
+
+		if referralBy != nil {
+			response["referral_by"] = referralBy.ID.String()
+		}
+
+		return utils.ResponseSucess(c, http.StatusCreated, "Registered successfully", response)
 	}
 }
 
