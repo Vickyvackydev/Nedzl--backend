@@ -12,18 +12,18 @@ import (
 )
 
 type StoreResponse struct {
-	ID                uuid.UUID         `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
-	BusinessName      string            `json:"business_name"`
-	AboutCompany      string            `json:"about_company"`
-	StoreName         string            `json:"store_name"`
-	Address           string            `json:"address"`
-	State             string            `json:"state"`
-	HowDoWeLocateYou  string            `json:"how_do_we_locate_you"`
-	BusinessHoursFrom string            `json:"business_hours_from"`
-	BusinessHoursTo   string            `json:"business_hours_to"`
-	Region            string            `json:"region"`
-	UserID            uuid.UUID         `json:"user_id"` // needed to link with the currently authenticated user
-	User              models.PublicUser `json:"user"`
+	ID                uuid.UUID          `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
+	BusinessName      string             `json:"business_name"`
+	AboutCompany      string             `json:"about_company"`
+	StoreName         string             `json:"store_name"`
+	Address           string             `json:"address"`
+	State             string             `json:"state"`
+	HowDoWeLocateYou  string             `json:"how_do_we_locate_you"`
+	BusinessHoursFrom string             `json:"business_hours_from"`
+	BusinessHoursTo   string             `json:"business_hours_to"`
+	Region            string             `json:"region"`
+	UserID            uuid.UUID          `json:"user_id"` // needed to link with the currently authenticated user
+	User              *models.PublicUser `json:"user"`
 
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
@@ -31,22 +31,25 @@ type StoreResponse struct {
 }
 
 func convertToStoreResponse(settings models.StoreSetting) StoreResponse {
-	publicUser := models.PublicUser{
-		ID:            settings.User.ID,
-		UserName:      settings.User.UserName,
-		Email:         settings.User.Email,
-		Role:          string(settings.User.Role),
-		PhoneNumber:   settings.User.PhoneNumber,
-		ImageUrl:      settings.User.ImageUrl,
-		Location:      settings.User.Location,
-		Status:        settings.User.Status,
-		IsVerified:    settings.User.IsVerified,
-		ReferralCode:  settings.User.ReferralCode,
-		ReferralBy:    settings.User.ReferralBy,
-		ReferralCount: settings.User.ReferralCount,
-		CreatedAt:     settings.User.CreatedAt,
-		UpdatedAt:     settings.User.UpdatedAt,
-		DeletedAt:     settings.User.DeletedAt,
+	var publicUserPtr *models.PublicUser
+	if settings.User.ID != uuid.Nil {
+		publicUserPtr = &models.PublicUser{
+			ID:            settings.User.ID,
+			UserName:      settings.User.UserName,
+			Email:         settings.User.Email,
+			Role:          string(settings.User.Role),
+			PhoneNumber:   settings.User.PhoneNumber,
+			ImageUrl:      settings.User.ImageUrl,
+			Location:      settings.User.Location,
+			Status:        settings.User.Status,
+			IsVerified:    settings.User.IsVerified,
+			ReferralCode:  settings.User.ReferralCode,
+			ReferralBy:    settings.User.ReferralBy,
+			ReferralCount: settings.User.ReferralCount,
+			CreatedAt:     settings.User.CreatedAt,
+			UpdatedAt:     settings.User.UpdatedAt,
+			DeletedAt:     settings.User.DeletedAt,
+		}
 	}
 
 	return StoreResponse{
@@ -61,7 +64,7 @@ func convertToStoreResponse(settings models.StoreSetting) StoreResponse {
 		BusinessHoursTo:   settings.BusinessHoursTo,
 		Region:            settings.Region,
 		UserID:            settings.UserID,
-		User:              publicUser,
+		User:              publicUserPtr,
 		CreatedAt:         settings.CreatedAt,
 		UpdatedAt:         settings.UpdatedAt,
 		DeletedAt:         settings.DeletedAt,

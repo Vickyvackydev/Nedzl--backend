@@ -26,21 +26,24 @@ import (
 
 // convertToProductResponse converts a Products model to a safe ProductResponse
 func ConvertToProductResponse(product models.Products, isLiked bool) models.ProductResponse {
-	publicUser := models.PublicUser{
-		ID:            product.User.ID,
-		UserName:      product.User.UserName,
-		Email:         product.User.Email,
-		Role:          string(product.User.Role),
-		PhoneNumber:   product.User.PhoneNumber,
-		ImageUrl:      product.User.ImageUrl,
-		Location:      product.User.Location,
-		IsVerified:    product.User.IsVerified,
-		ReferralCode:  product.User.ReferralCode,
-		ReferralBy:    product.User.ReferralBy,
-		ReferralCount: product.User.ReferralCount,
-		CreatedAt:     product.User.CreatedAt,
-		UpdatedAt:     product.User.UpdatedAt,
-		DeletedAt:     product.User.DeletedAt,
+	var publicUserPtr *models.PublicUser
+	if product.User.ID != uuid.Nil {
+		publicUserPtr = &models.PublicUser{
+			ID:            product.User.ID,
+			UserName:      product.User.UserName,
+			Email:         product.User.Email,
+			Role:          string(product.User.Role),
+			PhoneNumber:   product.User.PhoneNumber,
+			ImageUrl:      product.User.ImageUrl,
+			Location:      product.User.Location,
+			IsVerified:    product.User.IsVerified,
+			ReferralCode:  product.User.ReferralCode,
+			ReferralBy:    product.User.ReferralBy,
+			ReferralCount: product.User.ReferralCount,
+			CreatedAt:     product.User.CreatedAt,
+			UpdatedAt:     product.User.UpdatedAt,
+			DeletedAt:     product.User.DeletedAt,
+		}
 	}
 
 	return models.ProductResponse{
@@ -60,7 +63,7 @@ func ConvertToProductResponse(product models.Products, isLiked bool) models.Prod
 		Condition:         product.Condition,
 		BrandName:         product.BrandName,
 		UserID:            product.UserID,
-		User:              publicUser,
+		User:              publicUserPtr,
 		University:        product.University,
 		CreatedAt:         product.CreatedAt,
 		UpdatedAt:         product.UpdatedAt,

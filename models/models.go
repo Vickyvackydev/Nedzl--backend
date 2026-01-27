@@ -144,7 +144,7 @@ type Products struct {
 	University        string         `json:"university"`
 	Status            Status         `json:"status" gorm:"type:varchar(20);default:'ONGOING'"`
 	UserID            uuid.UUID      `json:"user_id" gorm:"type:uuid"`
-	User              User           `json:"user" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	User              User           `json:"user" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	CreatedAt         time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt         time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index"`
@@ -178,7 +178,7 @@ type ProductResponse struct {
 	UserID            uuid.UUID      `json:"user_id"`
 	University        string         `json:"university"`
 	BrandName         string         `json:"brand_name"`
-	User              PublicUser     `json:"user"`
+	User              *PublicUser    `json:"user"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 	DeletedAt         gorm.DeletedAt `json:"-"`
