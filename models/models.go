@@ -66,32 +66,41 @@ func IsValidUserStatus(s Status) bool {
 
 }
 
-type RegisterRequest struct {
-	UserName    string `json:"user_name"`
-	Email       string `json:"email"`
-	PhoneNumber string `json:"phone_number"`
-	Role        Role   `json:"role"`
-	Password    string `json:"password"`
+type ReferedBy struct {
+	ID       uuid.UUID `json:"id"`
+	UserName string    `json:"user_name"`
+	Email    string    `json:"email"`
 }
 
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+type RegisterRequest struct {
+	UserName    string `json:"user_name"`
+	Email       string `json:"email"`
+	PhoneNumber string `json:"phone_number"`
+	Role        Role   `json:"role"`
+	Password    string `json:"password"`
+	ReferalCode string `json:"referral_code"`
+}
 
 type PublicUser struct {
-	ID          uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
-	UserName    string         `json:"user_name"`
-	Email       string         `json:"email"`
-	Role        string         `json:"role"`
-	PhoneNumber string         `json:"phone_number"`
-	ImageUrl    string         `json:"image_url"`
-	Location    string         `json:"location"`
-	Status      Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
-	IsVerified  bool           `gorm:"default:false" json:"is_verified"`
-	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
+	ID            uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
+	UserName      string         `json:"user_name"`
+	Email         string         `json:"email"`
+	Role          string         `json:"role"`
+	PhoneNumber   string         `json:"phone_number"`
+	ImageUrl      string         `json:"image_url"`
+	Location      string         `json:"location"`
+	ReferralCode  string         `gorm:"uniqueIndex" json:"referral_code"`
+	ReferralBy    *ReferedBy     `gorm:"jsonb" json:"referral_by"`
+	ReferralCount int64          `json:"referral_count"`
+	Status        Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
+	IsVerified    bool           `gorm:"default:false" json:"is_verified"`
+	CreatedAt     time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt     time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type User struct {
@@ -103,6 +112,9 @@ type User struct {
 	Password         string         `json:"password"`
 	ImageUrl         string         `json:"image_url"`
 	Location         string         `json:"location"`
+	ReferralCode     string         `gorm:"uniqueIndex" json:"referral_code"`
+	ReferralBy       *ReferedBy     `gorm:"type:jsonb" json:"referral_by"`
+	ReferralCount    int64          `json:"referral_count"`
 	EmailVerified    bool           `gorm:"default:false" json:"email_verified"`
 	IsVerified       bool           `gorm:"default:false" json:"is_verified"`
 	EmailToken       string         `gorm:"size:255" json:"email_token"`

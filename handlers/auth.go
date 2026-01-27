@@ -4,7 +4,9 @@ import (
 	"api/emails"
 	"api/models"
 	"api/utils"
+	"fmt"
 	"os"
+	"strings"
 
 	// "database/sql"
 
@@ -75,6 +77,10 @@ func generateVerificationToken() (string, string) {
 
 // }
 
+func generateReferralCode() string {
+	return strings.ToUpper(uuid.New().String()[:8])
+}
+
 func Register(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var req models.RegisterRequest
@@ -114,6 +120,29 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		// Set token expiration to 5 minutes from now
 		expiryTime := time.Now().Add(5 * time.Minute)
 
+		var referer models.User
+		if referer.Email == req.Email {
+			return utils.ResponseError(c, http.StatusBadRequest, "You cannot refer yourself", nil)
+		}
+
+		var referralBy *models.ReferedBy = nil
+		if req.ReferalCode != "" {
+
+			if err := db.Where("referral_code = ?", req.ReferalCode).First(&referer).Error; err != nil {
+				return utils.ResponseError(c, http.StatusBadRequest, "Invalid referral code", err)
+			}
+
+			referralBy = &models.ReferedBy{
+				ID:       referer.ID,
+				UserName: referer.UserName,
+				Email:    referer.Email,
+			}
+
+		}
+
+		if referer.ID == uuid.Nil {
+			referralBy = nil
+		}
 		user := models.User{
 			UserName:         req.UserName,
 			Email:            req.Email,
@@ -122,6 +151,8 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 			Password:         string(hash),
 			EmailToken:       token,
 			EmailTokenExpiry: &expiryTime,
+			ReferralBy:       referralBy,
+			ReferralCode:     generateReferralCode(),
 			EmailVerified:    false,
 		}
 
@@ -133,6 +164,11 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}
 
+		if referer.ID != uuid.Nil {
+			if err := db.Model(&models.User{}).Where("id = ?", referer.ID).UpdateColumn("referral_count", gorm.Expr("referral_count + ?", 1)).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update referral count", err)
+			}
+		}
 		if req.Role != "ADMIN" {
 			err = emails.SendVerificationMail(req.Email, req.UserName, token, expiryTime)
 			if err != nil {
@@ -141,10 +177,12 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		return utils.ResponseSucess(c, http.StatusCreated, "Registered successfully", map[string]string{
-			"user_name":    user.UserName,
-			"email":        user.Email,
-			"phone_number": user.PhoneNumber,
-			"role":         string(user.Role),
+			"user_name":     user.UserName,
+			"email":         user.Email,
+			"phone_number":  user.PhoneNumber,
+			"role":          string(user.Role),
+			"referral_code": user.ReferralCode,
+			"referral_by":   referralBy.ID.String(),
 		})
 	}
 }
@@ -194,10 +232,11 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 		return utils.ResponseSucess(c, http.StatusOK, "Login successfully", echo.Map{
 			"token": tokenString,
 			"user": map[string]string{
-				"user_name":    user.UserName,
-				"email":        user.Email,
-				"phone_number": user.PhoneNumber,
-				"role":         string(user.Role),
+				"user_name":      user.UserName,
+				"email":          user.Email,
+				"phone_number":   user.PhoneNumber,
+				"role":           string(user.Role),
+				"referral_count": fmt.Sprintf("%d", user.ReferralCount),
 			},
 		})
 	}

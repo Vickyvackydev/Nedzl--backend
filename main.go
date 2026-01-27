@@ -40,38 +40,11 @@ func main() {
 
 	// Initialize database
 	db.ConnectDb()
+	// db.SyncReferralCounts(db.DB)
 	// db.ResetDatabase(db.DB)
 
-	// Initialize email client AFTER loading env
 	emails.InitEmailClient()
-	// apiKey := os.Getenv("RESEND_API_KEY")
 
-	// fmt.Printf("this is the api key %s", apiKey)
-
-	// client := resend.NewClient(apiKey)
-	// emails.InitEmailClient()
-
-	// Send
-	// params := &resend.SendEmailRequest{
-	// 	From:    "Acme <onboarding@resend.dev>",
-	// 	To:      []string{"delivered@resend.dev"},
-	// 	Subject: "Hello world",
-	// 	Html:    "<strong>It works!</strong>",
-	// }
-
-	// sent, err := client.Emails.Send(params)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(sent.Id)
-
-	// Echo instance
-
-	// if err := migrations.MigrateToUUID(db.DB); err != nil {
-	// 	log.Fatal("❌ UUID Migration failed:", err)
-	// }
-
-	// log.Println("✅ Database UUID migration completed!")
 	e := echo.New()
 
 	// Global middleware to return JSON

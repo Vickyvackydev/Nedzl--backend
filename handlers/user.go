@@ -31,16 +31,19 @@ func GetUsers(db *gorm.DB) echo.HandlerFunc {
 
 		for i, u := range users {
 			publicUsers[i] = models.PublicUser{
-				ID:         u.ID,
-				UserName:   u.UserName,
-				Email:      u.Email,
-				Role:       string(u.Role),
-				ImageUrl:   u.ImageUrl,
-				Location:   u.Location,
-				Status:     u.Status,
-				IsVerified: u.IsVerified,
-				CreatedAt:  u.CreatedAt,
-				UpdatedAt:  u.UpdatedAt,
+				ID:            u.ID,
+				UserName:      u.UserName,
+				Email:         u.Email,
+				Role:          string(u.Role),
+				ImageUrl:      u.ImageUrl,
+				Location:      u.Location,
+				Status:        u.Status,
+				IsVerified:    u.IsVerified,
+				ReferralCode:  u.ReferralCode,
+				ReferralBy:    u.ReferralBy,
+				ReferralCount: u.ReferralCount,
+				CreatedAt:     u.CreatedAt,
+				UpdatedAt:     u.UpdatedAt,
 			}
 
 		}
@@ -63,17 +66,20 @@ func GetUserById(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		response := models.PublicUser{
-			ID:          user.ID,
-			UserName:    user.UserName,
-			Email:       user.Email,
-			Role:        string(user.Role),
-			ImageUrl:    user.ImageUrl,
-			PhoneNumber: user.PhoneNumber,
-			Location:    user.Location,
-			Status:      user.Status,
-			IsVerified:  user.IsVerified,
-			CreatedAt:   user.CreatedAt,
-			UpdatedAt:   user.UpdatedAt,
+			ID:            user.ID,
+			UserName:      user.UserName,
+			Email:         user.Email,
+			Role:          string(user.Role),
+			ImageUrl:      user.ImageUrl,
+			PhoneNumber:   user.PhoneNumber,
+			Location:      user.Location,
+			Status:        user.Status,
+			IsVerified:    user.IsVerified,
+			ReferralCode:  user.ReferralCode,
+			ReferralBy:    user.ReferralBy,
+			ReferralCount: user.ReferralCount,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "User retrieved successfully", response)
@@ -150,16 +156,17 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		response := models.PublicUser{
-			ID:          user.ID,
-			UserName:    user.UserName,
-			Email:       user.Email,
-			PhoneNumber: user.PhoneNumber,
-			Role:        string(user.Role),
-			ImageUrl:    user.ImageUrl,
-			Location:    user.Location,
-			IsVerified:  user.IsVerified,
-			CreatedAt:   user.CreatedAt,
-			UpdatedAt:   user.UpdatedAt,
+			ID:            user.ID,
+			UserName:      user.UserName,
+			Email:         user.Email,
+			PhoneNumber:   user.PhoneNumber,
+			Role:          string(user.Role),
+			ImageUrl:      user.ImageUrl,
+			Location:      user.Location,
+			ReferralCount: user.ReferralCount,
+			IsVerified:    user.IsVerified,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
 		}
 
 		return utils.ResponseSucess(c, http.StatusOK, "User updated successfully", echo.Map{"user": response})
@@ -180,17 +187,20 @@ func Me(c echo.Context) error {
 
 	// Convert to PublicUser for response
 	publicUser := models.PublicUser{
-		ID:          user.ID,
-		UserName:    user.UserName,
-		Email:       user.Email,
-		Role:        string(user.Role),
-		PhoneNumber: user.PhoneNumber,
-		ImageUrl:    user.ImageUrl,
-		Location:    user.Location,
-		IsVerified:  user.IsVerified,
-		CreatedAt:   user.CreatedAt,
-		UpdatedAt:   user.UpdatedAt,
-		DeletedAt:   user.DeletedAt,
+		ID:            user.ID,
+		UserName:      user.UserName,
+		Email:         user.Email,
+		Role:          string(user.Role),
+		PhoneNumber:   user.PhoneNumber,
+		ImageUrl:      user.ImageUrl,
+		Location:      user.Location,
+		IsVerified:    user.IsVerified,
+		ReferralCode:  user.ReferralCode,
+		ReferralBy:    user.ReferralBy,
+		ReferralCount: user.ReferralCount,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+		DeletedAt:     user.DeletedAt,
 	}
 
 	return utils.ResponseSucess(c, http.StatusOK, "User Details Retrieved", echo.Map{"user": publicUser})
