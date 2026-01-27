@@ -18,13 +18,19 @@ import (
 
 // --- Helper: Safe % Growth Calculation ---
 func calculateGrowthRate(previous, current int64) float64 {
-	if previous == 0 && current == 0 {
+	if previous == 0 {
+		if current > 0 {
+			return 100
+		}
 		return 0
 	}
-	if previous == 0 {
+	change := float64(current-previous) / float64(previous) * 100
+	if change > 100 {
 		return 100
 	}
-	change := float64(current-previous) / float64(previous) * 100
+	if change < -100 {
+		return -100
+	}
 	return math.Round(change*100) / 100 // Round to 2 decimals
 }
 
@@ -56,9 +62,9 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 			prevEnd = startDate
 			prevStart = startDate.AddDate(-1, 0, 0)
 		default:
-			// Default to current year
+			// Default to current year (YTD Comparison)
 			startDate = time.Date(currentYear, 1, 1, 0, 0, 0, 0, now.Location())
-			prevEnd = startDate
+			prevEnd = now.AddDate(-1, 0, 0)
 			prevStart = time.Date(currentYear-1, 1, 1, 0, 0, 0, 0, now.Location())
 		}
 
@@ -76,15 +82,15 @@ func GetDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		// Count products by status created in this period
-		if err := db.Model(&models.Products{}).Where("status = ?", models.StatusOngoing).Count(&activeProducts).Error; err != nil {
+		if err := db.Model(&models.Products{}).Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusOngoing, startDate, now).Count(&activeProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count active products", err)
 		}
 
-		if err := db.Model(&models.Products{}).Where("status = ?", models.StatusClosed).Count(&closedProducts).Error; err != nil {
+		if err := db.Model(&models.Products{}).Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusClosed, startDate, now).Count(&closedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count closed products", err)
 		}
 
-		if err := db.Model(&models.Products{}).Where("status = ?", models.StatusRejected).Count(&flaggedProducts).Error; err != nil {
+		if err := db.Model(&models.Products{}).Where("status = ? AND created_at BETWEEN ? AND ?", models.StatusRejected, startDate, now).Count(&flaggedProducts).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count flagged products", err)
 		}
 		if err := db.Model(&models.User{}).Where("created_at BETWEEN ? AND ? AND role = ?", startDate, now, models.RoleUser).Count(&totalUsers).Error; err != nil {
@@ -190,9 +196,9 @@ func GetUserDashboardOverview(db *gorm.DB) echo.HandlerFunc {
 			prevEnd = startDate
 			prevStart = startDate.AddDate(-1, 0, 0)
 		default:
-			// Default to current year
+			// Default to current year (YTD Comparison)
 			startDate = time.Date(currentYear, 1, 1, 0, 0, 0, 0, now.Location())
-			prevEnd = startDate
+			prevEnd = now.AddDate(-1, 0, 0)
 			prevStart = time.Date(currentYear-1, 1, 1, 0, 0, 0, 0, now.Location())
 		}
 
