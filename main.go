@@ -70,6 +70,8 @@ func main() {
 	e.POST("/auth/register", handlers.Register(db.DB))
 	e.POST("/auth/login", handlers.Login(db.DB))
 	e.POST("/auth/verify-email", handlers.VerifyEmail(db.DB))
+	e.POST("/auth/forgot-password", handlers.ForgotPassword(db.DB))
+	e.POST("/auth/reset-password", handlers.ResetPassword(db.DB))
 	e.POST("/contact", handlers.Contact(db.DB))
 
 	auth := e.Group("")

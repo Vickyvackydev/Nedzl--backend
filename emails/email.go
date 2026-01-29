@@ -515,3 +515,141 @@ func SendContactEmail(firstName, lastName, email, phoneNumber, message string) e
 
 	return err
 }
+
+func SendPasswordResetMail(to, username, token string, expiryTime time.Time) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	resetLink := fmt.Sprintf(`https://nedzl.com/auth/reset-password?token=%s&email=%s`, token, to)
+	expiryFormatted := expiryTime.Format("3:04 PM MST")
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 20px; margin-top: 0; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; transition: background 0.3s ease; }
+            .expiry-notice { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 20px 0; border-radius: 4px; color: #856404; font-size: 14px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+            .social-links { margin-top: 10px; }
+            .social-links a { color: #07B463; text-decoration: none; margin: 0 10px; font-weight: 600; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>Hello %s,</h2>
+                <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this email.</p>
+                <p>To reset your password, please click the button below:</p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="%s" class="btn">Reset My Password</a>
+                </div>
+
+                <div class="expiry-notice">
+                    <strong>⏰ Important:</strong> This link will expire at <strong>%s</strong>. Please reset your password before then.
+                </div>
+
+                <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #07B463; font-size: 14px;">%s</p>
+
+                <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>`, username, resetLink, expiryFormatted, resetLink)
+
+	params := &resend.SendEmailRequest{
+		From:    "noreply@nedzl.com",
+		To:      []string{to},
+		Html:    html,
+		Subject: "Reset your NedZl password",
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
+func SendPasswordResetSuccessMail(to, username string) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 20px; margin-top: 0; }
+            .success-card { background: #e6fffa; border: 1px solid #b2f5ea; border-radius: 8px; padding: 20px; margin: 25px 0; border-left: 4px solid #07B463; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+            .social-links { margin-top: 10px; }
+            .social-links a { color: #07B463; text-decoration: none; margin: 0 10px; font-weight: 600; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>Password Reset Successful!</h2>
+                
+                <div class="success-card">
+                    <p style="margin: 0; font-weight: 600; color: #234e52;">Your password has been changed</p>
+                    <p style="margin: 5px 0 0 0;">Hello %s, your NedZl account password was successfully updated. You can now log in with your new password.</p>
+                </div>
+
+                <p>Click the button below to log in to your account:</p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="https://nedzl.com/login" class="btn">Login to My Account</a>
+                </div>
+
+                <p>If you did not perform this action, please contact our support team immediately.</p>
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>`, username)
+
+	params := &resend.SendEmailRequest{
+		From:    "noreply@nedzl.com",
+		To:      []string{to},
+		Html:    html,
+		Subject: "Your NedZl password was reset successfully",
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}

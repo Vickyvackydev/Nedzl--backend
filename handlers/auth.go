@@ -302,6 +302,85 @@ func VerifyEmail(db *gorm.DB) echo.HandlerFunc {
 
 }
 
+func ForgotPassword(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var email struct {
+			Email string `json:"email"`
+		}
+
+		if err := c.Bind(&email); err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
+		}
+
+		var user models.User
+
+		if err := db.Where("email = ?", email.Email).First(&user).Error; err != nil {
+			return utils.ResponseError(c, http.StatusNotFound, "Invalid email", err)
+		}
+
+		_, token := generateVerificationToken()
+		expiryTime := time.Now().Add(5 * time.Minute)
+
+		user.PasswordResetToken = token
+
+		user.PasswordResetTokenExpiry = &expiryTime
+
+		if err := db.Save(&user).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to verify email", err)
+
+		}
+		if err := emails.SendPasswordResetMail(user.Email, user.UserName, token, expiryTime); err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to send password reset email", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Email verified successfully", nil)
+	}
+
+}
+
+func ResetPassword(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var body struct {
+			Token    string `json:"token"`
+			Password string `json:"password"`
+		}
+
+		if err := c.Bind(&body); err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
+		}
+
+		if body.Token == "" || body.Password == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", nil)
+		}
+
+		var user models.User
+
+		if err := db.Where("password_reset_token = ? AND password_reset_token_expiry > ?", body.Token, time.Now()).First(&user).Error; err != nil {
+			return utils.ResponseError(c, http.StatusNotFound, "Invalid token", err)
+		}
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to hash password", err)
+		}
+
+		user.Password = string(hashedPassword)
+		user.PasswordResetToken = ""
+
+		user.PasswordResetTokenExpiry = nil
+
+		if err := db.Save(&user).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to reset password", err)
+		}
+
+		emails.SendPasswordResetSuccessMail(user.Email, user.UserName)
+
+		return utils.ResponseSucess(c, http.StatusOK, "Password reset successfully", nil)
+
+	}
+
+}
+
 // func Login(db *gorm.DB) echo.HandlerFunc {
 // 	return func(c echo.Context) error {
 // 		var req models.LoginRequest
