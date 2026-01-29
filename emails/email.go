@@ -79,14 +79,14 @@ func SendVerificationMail(to, username, token string, expiryTime time.Time) erro
                 <p>Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
-                    <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
+                    <a href="https://nedzl.com/contact">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username, verificationLink, expiryFormatted, verificationLink)
+    </html>`, username, verificationLink, expiryFormatted, verificationLink, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -146,14 +146,14 @@ func SendUserDeactivationEmail(to, username string) error {
                 <p>Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
                     <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username)
+    </html>`, username, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -220,14 +220,14 @@ func SendProductDeactivationEmail(to, username, productname, reason string) erro
                 <p>Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
                     <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username, productname, reason)
+    </html>`, username, productname, reason, time.Now().Year())
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
 		To:      []string{to},
@@ -286,14 +286,14 @@ func SendAccountVerifiedMail(to, username string) error {
                 <p>Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
                     <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username)
+    </html>`, username, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -357,14 +357,14 @@ func SendProductReactivationEmail(to, username, productname, productID string) e
                 <p>Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
                     <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username, productname, productLink)
+    </html>`, username, productname, productLink, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -424,14 +424,14 @@ func SendProductClosureEmail(to, username, productname string) error {
                 <p>Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
                     <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username, productname)
+    </html>`, username, productname, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -567,14 +567,14 @@ func SendPasswordResetMail(to, username, token string, expiryTime time.Time) err
                 <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
                     <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username, resetLink, expiryFormatted, resetLink)
+    </html>`, username, resetLink, expiryFormatted, resetLink, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
@@ -634,14 +634,14 @@ func SendPasswordResetSuccessMail(to, username string) error {
                 <p>Best regards,<br>The NedZl Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 NedZl Marketplace. All rights reserved.</p>
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
                 <div class="social-links">
                     <a href="https://nedzl.com/faqs">Help Center</a> | <a href="https://nedzl.com/terms-of-service">Terms of Service</a> | <a href="https://nedzl.com/privacy-policy">Privacy Policy</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>`, username)
+    </html>`, username, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
