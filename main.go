@@ -26,17 +26,17 @@ func main() {
 
 	// 🧩 Load .env file first
 	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️  No .env file found, using system environment variables")
+		log.Println(" No .env file found, using system environment variables")
 	} else {
-		log.Println("✅ .env file loaded successfully")
+		log.Println(".env file loaded successfully")
 	}
 
 	// Verify API key is loaded
 	apiKey := os.Getenv("RESEND_API_KEY")
 	if apiKey == "" {
-		log.Fatal("❌ RESEND_API_KEY not found in environment")
+		log.Fatal("RESEND_API_KEY not found in environment")
 	}
-	log.Printf("✅ RESEND_API_KEY loaded: %s...\n", apiKey[:10])
+	// log.Printf("RESEND_API_KEY loaded: %s...\n", apiKey[:10])
 
 	// Initialize database
 	db.ConnectDb()
@@ -84,6 +84,7 @@ func main() {
 	e.GET("/products/counts", handlers.GetTotalProductsByCatgory(db.DB))
 	e.GET("/store-settings/:id", handlers.GetStoreSettings(db.DB))
 	e.GET("/products/search", handlers.SearchProducts(db.DB))
+	e.GET("/products/:id/similar", handlers.GetSimilarProducts(db.DB))
 	e.GET("/products/search/results", handlers.GetSearchResults(db.DB))
 	auth.PUT("/products/:id/user", handlers.UpdateUserProduct(db.DB))
 	auth.GET("/products/user", handlers.GetUserProducts(db.DB))

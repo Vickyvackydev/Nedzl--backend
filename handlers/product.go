@@ -813,6 +813,34 @@ func GetTotalProductsByCatgory(db *gorm.DB) echo.HandlerFunc {
 	}
 }
 
+func GetSimilarProducts(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		id := c.Param("id")
+		limit, _ := strconv.Atoi(c.QueryParam("limit"))
+		if limit <= 0 {
+			limit = 10
+		}
+
+		var product models.Products
+		if err := db.First(&product, "id = ?", id).Error; err != nil {
+			return utils.ResponseError(c, http.StatusNotFound, "Product not found", err)
+		}
+
+		similarProduct, err := utils.FindSimilarProducts(db, &product, limit)
+
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to find similar products", err)
+		}
+
+		results := []models.ProductResponse{}
+
+		for _, p := range similarProduct {
+			results = append(results, ConvertToProductResponse(p, false))
+		}
+		return utils.ResponseSucess(c, http.StatusOK, "Similar products retrieved", results)
+	}
+}
+
 func GetSearchResults(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		query := c.QueryParam("q")
