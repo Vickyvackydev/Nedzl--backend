@@ -40,7 +40,7 @@ func main() {
 
 	// Initialize database
 	db.ConnectDb()
-	db.UpdateDB(db.DB)
+
 	// db.SyncReferralCounts(db.DB)
 	// db.ResetDatabase(db.DB)
 
@@ -93,6 +93,9 @@ func main() {
 	auth.DELETE("/products/:id/user", handlers.DeleteUserProduct(db.DB))
 	auth.DELETE("/products/:id", handlers.DeleteUserProduct(db.DB))
 	auth.POST("/products/:id/toggle-like", handlers.ToggleLike(db.DB))
+
+	// -- FACEBOOK INTEGRATION ROUTES -- >
+	e.GET("/api/facebook/feed", handlers.GetFacebookProductFeed(db.DB))
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)
