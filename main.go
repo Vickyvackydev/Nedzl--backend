@@ -40,6 +40,7 @@ func main() {
 
 	// Initialize database
 	db.ConnectDb()
+	db.UpdateDB(db.DB)
 	// db.SyncReferralCounts(db.DB)
 	// db.ResetDatabase(db.DB)
 
