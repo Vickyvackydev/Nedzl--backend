@@ -15,7 +15,7 @@ func FindSimilarProducts(db *gorm.DB, product *models.Products, limit int) ([]mo
 
 	keywords := strings.Fields(strings.ToLower(product.Name))
 	if len(keywords) == 0 {
-		return nil, nil
+		return products, nil
 	}
 
 	query := db.Model(&products).Where("name = ?", product.Name).Where("id != ?", product.ID).Where("status = ?", models.StatusOngoing)

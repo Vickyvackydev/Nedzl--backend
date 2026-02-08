@@ -17,7 +17,7 @@ type ProductLike struct {
 
 type Products struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
-	Name              string         `json:"product_name"`
+	Name              string         `gorm:"column:name" json:"product_name"`
 	ProductPrice      float64        `json:"product_price"`
 	MarketPriceFrom   float64        `json:"market_price_from"`
 	MarketPriceTo     float64        `json:"market_price_to"`
