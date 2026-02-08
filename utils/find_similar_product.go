@@ -14,15 +14,18 @@ func FindSimilarProducts(db *gorm.DB, product *models.Products, limit int) ([]mo
 	// we first extract keywords from product name
 
 	keywords := strings.Fields(strings.ToLower(product.Name))
+	if len(keywords) == 0 {
+		return nil, nil
+	}
 
-	query := db.Model(&products).Where("product_name = ?", product.Name).Where("id != ?", product.ID).Where("status = ?", models.StatusOngoing)
+	query := db.Model(&products).Where("name = ?", product.Name).Where("id != ?", product.ID).Where("status = ?", models.StatusOngoing)
 
 	// we apply the key word similarity
 
 	keywordQuery := db
 
 	for _, kw := range keywords {
-		keywordQuery = keywordQuery.Or("product_name ILIKE ? OR description ILIKE ?", "%"+kw+"%", "%"+kw+"%")
+		keywordQuery = keywordQuery.Or("name ILIKE ? OR description ILIKE ?", "%"+kw+"%", "%"+kw+"%")
 	}
 
 	query = query.Where(keywordQuery)
@@ -31,7 +34,7 @@ func FindSimilarProducts(db *gorm.DB, product *models.Products, limit int) ([]mo
 
 	query = query.Order(`
 	CASE
-		WHEN product_name ILIKE '%` + keywords[0] + `%' THEN 1
+		WHEN name ILIKE '%` + keywords[0] + `%' THEN 1
 		WHEN description ILIKE '%` + keywords[0] + `%' THEN 2
 		ELSE 3
 	 END,
