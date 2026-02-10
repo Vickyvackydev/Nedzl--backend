@@ -102,7 +102,7 @@ func main() {
 
 	auth.PATCH("/users/update", handlers.UpdateUser(db.DB))
 	auth.POST("/store-settings", handlers.CreateStoreSettings(db.DB))
-
+	auth.PATCH("/products/update/:id/status", handlers.UpdateProductStatus(db.DB))
 	auth.GET("/users", handlers.GetUsers(db.DB))
 	auth.GET("/users/:id", handlers.GetUserById(db.DB))
 
