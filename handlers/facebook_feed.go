@@ -85,12 +85,12 @@ func GetFacebookProductFeed(db *gorm.DB) echo.HandlerFunc {
 				ID:           p.ID.String(),
 				Title:        p.Name,
 				Description:  p.Description,
-				Link:         fmt.Sprintf("%s/products/%s", baseURL, p.ID.String()),
+				Link:         fmt.Sprintf("%s/product-details/%s", baseURL, p.ID.String()),
 				ImageLink:    imageLink,
 				Brand:        p.BrandName,
 				Condition:    condition,
 				Availability: "in stock",
-				Price:        fmt.Sprintf("%.2f NGN", p.ProductPrice), // Adjust currency if needed
+				Price:        fmt.Sprintf("%.2f NGN", p.ProductPrice),
 			}
 
 			// Add more mapping logic if you have specific categories
