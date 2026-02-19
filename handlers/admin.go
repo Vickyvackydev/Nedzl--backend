@@ -530,6 +530,14 @@ func GetAdminProducts(db *gorm.DB) echo.HandlerFunc {
 			query = query.Where("product_name ILIKE ? OR description ILIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 		}
 
+		isDeletedByUser := c.QueryParam("is_deleted_by_user")
+		if isDeletedByUser != "" {
+			deleted, err := strconv.ParseBool(isDeletedByUser)
+			if err == nil {
+				query = query.Where("is_deleted_by_user = ?", deleted)
+			}
+		}
+
 		query = query.Order("created_at DESC")
 		// -- GET RESULTS --
 
