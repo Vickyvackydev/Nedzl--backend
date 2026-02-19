@@ -41,6 +41,7 @@ type Products struct {
 	ClosedAt          *time.Time     `gorm:"index"`
 	Views             int64          `json:"views" gorm:"default:0"`
 	Likes             int64          `json:"likes" gorm:"default:0"`
+	IsDeletedByUser   bool           `json:"is_deleted_by_user" gorm:"default:false"`
 }
 
 type ProductResponse struct {
@@ -68,6 +69,7 @@ type ProductResponse struct {
 	Views             int64          `json:"views"`
 	Likes             int64          `json:"likes"`
 	IsLikedByMe       bool           `json:"is_liked_by_me"`
+	IsDeletedByUser   bool           `json:"is_deleted_by_user"`
 }
 type StoreSetting struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`

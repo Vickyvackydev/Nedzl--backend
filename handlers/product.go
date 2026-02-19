@@ -71,6 +71,7 @@ func ConvertToProductResponse(product models.Products, isLiked bool) models.Prod
 		Views:             product.Views,
 		Likes:             product.Likes,
 		IsLikedByMe:       isLiked,
+		IsDeletedByUser:   product.IsDeletedByUser,
 	}
 }
 
@@ -442,7 +443,7 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		var total int64
 
 		query.Model(&models.Products{}).Count(&total)
-		if err := query.Limit(limit).Offset(offSet).Where("status = ?", models.StatusOngoing).Find(&products).Error; err != nil {
+		if err := query.Limit(limit).Offset(offSet).Where("status = ? AND is_deleted_by_user = ?", models.StatusOngoing, false).Find(&products).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to retrieve products", err)
 		}
 
@@ -559,7 +560,7 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 		query = query.Order("created_at DESC")
 		var total int64
 		query.Model(&models.Products{}).Count(&total)
-		if err := query.Limit(limit).Offset(offset).Find(&products).Error; err != nil {
+		if err := query.Limit(limit).Offset(offset).Where("is_deleted_by_user = ?", false).Find(&products).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch user products", err)
 		}
 
@@ -623,7 +624,7 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product id", err)
 		}
 		var product models.Products
-		if err := db.Preload("User").First(&product, "id = ?", uid).Error; err != nil {
+		if err := db.Preload("User").First(&product, "id = ? AND is_deleted_by_user = ?", uid, false).Error; err != nil {
 			return utils.ResponseError(c, http.StatusNotFound, "Product not found", err)
 		}
 
@@ -653,8 +654,7 @@ func GetUserProduct(db *gorm.DB) echo.HandlerFunc {
 		ProductID := c.Param("id")
 
 		var product models.Products
-
-		if err := db.Preload("User").Where("id = ? AND user_id =?", ProductID, userID).First(&product).Error; err != nil {
+		if err := db.Preload("User").Where("id = ? AND user_id = ? AND is_deleted_by_user = ?", ProductID, userID, false).First(&product).Error; err != nil {
 			return utils.ResponseError(c, http.StatusNotFound, "Product not found or unauthorized", err)
 		}
 
@@ -679,9 +679,10 @@ func DeleteUserProduct(db *gorm.DB) echo.HandlerFunc {
 		id := c.Param("id")
 
 		var product models.Products
-		result := db.Where("id = ? AND user_id = ?", id, UserId).Delete(&product)
+		// Instead of deleting, we set IsDeletedByUser to true
+		result := db.Model(&product).Where("id = ? AND user_id = ?", id, UserId).Update("is_deleted_by_user", true)
 		if result.Error != nil {
-			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to delete product", result.Error)
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to mark product as deleted", result.Error)
 		}
 
 		if result.RowsAffected == 0 {
@@ -703,7 +704,7 @@ func SearchProducts(db *gorm.DB) echo.HandlerFunc {
 
 		var products []models.Products
 
-		if err := db.Where("LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ? OR LOWER(university) LIKE ?", searchTerm, searchTerm, searchTerm, searchTerm).Limit(20).Find(&products).Error; err != nil {
+		if err := db.Where("(LOWER(name) LIKE ? OR LOWER(brand_name) LIKE ? OR LOWER(category_name) LIKE ? OR LOWER(university) LIKE ?) AND is_deleted_by_user = ?", searchTerm, searchTerm, searchTerm, searchTerm, false).Limit(20).Find(&products).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch search results", err)
 		}
 
