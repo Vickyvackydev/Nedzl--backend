@@ -23,7 +23,7 @@ func PostToFacebook(message string, imageUrl string, link string) error {
 	// Graph API Endpoint for posting to the feed
 	endpoint := fmt.Sprintf("https://graph.facebook.com/v21.0/%s/photos", pageID)
 
-	caption := fmt.Sprintf("%s\n\n🛒 Buy now 👉 %s", message, link)
+	caption := fmt.Sprintf("%s\n\n🛒 Explore now 👉 %s", message, link)
 
 	form := url.Values{}
 	form.Add("url", imageUrl)
