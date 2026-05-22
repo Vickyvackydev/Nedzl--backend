@@ -197,6 +197,7 @@ func Me(c echo.Context) error {
 		IsVerified:    user.IsVerified,
 		ReferralCode:  user.ReferralCode,
 		ReferralBy:    user.ReferralBy,
+		StudentIDCard: user.StudentIDCard,
 		ReferralCount: user.ReferralCount,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
