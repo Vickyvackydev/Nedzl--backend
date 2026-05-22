@@ -644,6 +644,7 @@ func GetUserDetails(db *gorm.DB) echo.HandlerFunc {
 			Status:        user.Status,
 			IsVerified:    user.IsVerified,
 			ReferralCode:  user.ReferralCode,
+			StudentIDCard: user.StudentIDCard,
 			ReferralBy:    user.ReferralBy,
 			ReferralCount: user.ReferralCount,
 			CreatedAt:     user.CreatedAt,
