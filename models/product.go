@@ -42,6 +42,7 @@ type Products struct {
 	Views             int64          `json:"views" gorm:"default:0"`
 	Likes             int64          `json:"likes" gorm:"default:0"`
 	IsDeletedByUser   bool           `json:"is_deleted_by_user" gorm:"default:false"`
+	IsNotified        bool           `json:"is_notified" gorm:"default:false"`
 }
 
 type ProductResponse struct {

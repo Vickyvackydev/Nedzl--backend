@@ -20,6 +20,7 @@ type PublicUser struct {
 	ReferralCount int64          `json:"referral_count"`
 	Status        Status         `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
 	IsVerified    bool           `gorm:"default:false" json:"is_verified"`
+	StudentIDCard string         `json:"student_id_card"`
 	CreatedAt     time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt     time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
@@ -44,6 +45,7 @@ type User struct {
 	Status                   Status     `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
 	PasswordResetToken       string     `gorm:"size:255"`
 	PasswordResetTokenExpiry *time.Time
+	StudentIDCard            string         `json:"student_id_card"`
 	CreatedAt                time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt                time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt                gorm.DeletedAt `json:"-" gorm:"index"`

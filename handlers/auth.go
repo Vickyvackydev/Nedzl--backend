@@ -5,12 +5,11 @@ import (
 	"api/models"
 	"api/utils"
 	"fmt"
-	"os"
-	"strings"
-
-	// "database/sql"
-
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -156,6 +155,35 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 
 		if req.Role == "ADMIN" {
 			user.EmailVerified = true
+		}
+
+		// Handle student_id_card upload
+		file, err := c.FormFile("student_id_card")
+		if err == nil && file != nil {
+			src, err := file.Open()
+			if err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open student ID file", err)
+			}
+			defer src.Close()
+
+			tempFilePath := filepath.Join(os.TempDir(), "student_id_" + uuid.NewString() + filepath.Ext(file.Filename))
+			out, err := os.Create(tempFilePath)
+			if err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
+			}
+			defer out.Close()
+
+			if _, err := io.Copy(out, src); err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to write temp file", err)
+			}
+
+			url, err := utils.UploadToCloudinary(tempFilePath, "users/student_ids")
+			if err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to upload student ID", err)
+			}
+
+			user.StudentIDCard = url
+			os.Remove(tempFilePath)
 		}
 
 		if err := db.Create(&user).Error; err != nil {

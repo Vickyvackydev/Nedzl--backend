@@ -77,12 +77,12 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 type RegisterRequest struct {
-	UserName    string `json:"user_name"`
-	Email       string `json:"email"`
-	PhoneNumber string `json:"phone_number"`
-	Role        Role   `json:"role"`
-	Password    string `json:"password"`
-	ReferalCode string `json:"referral_code"`
+	UserName    string `json:"user_name" form:"user_name"`
+	Email       string `json:"email" form:"email"`
+	PhoneNumber string `json:"phone_number" form:"phone_number"`
+	Role        Role   `json:"role" form:"role"`
+	Password    string `json:"password" form:"password"`
+	ReferalCode string `json:"referral_code" form:"referral_code"`
 }
 
 type Suggestion struct {

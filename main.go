@@ -4,6 +4,7 @@ import (
 	"api/db"
 	"api/emails"
 	"api/handlers"
+	"api/utils"
 
 	// "fmt"
 
@@ -45,6 +46,7 @@ func main() {
 	// db.ResetDatabase(db.DB)
 
 	emails.InitEmailClient()
+	utils.StartJobs(db.DB)
 
 	e := echo.New()
 
@@ -123,8 +125,15 @@ func main() {
 	admin.DELETE("/product/:id/delete", handlers.DeleteAdminProduct(db.DB))
 	admin.DELETE("/users/:id/delete", handlers.DeleteUser(db.DB))
 
+	// Banner management
+	admin.GET("/banners/all", handlers.GetAdminBanners(db.DB))
+	admin.POST("/banners", handlers.CreateBanner(db.DB))
+	admin.DELETE("/banners/:id", handlers.DeleteBanner(db.DB))
+	admin.PATCH("/banners/:id/status", handlers.ToggleBannerStatus(db.DB))
+
 	// Global featured products access (optional auth)
 	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB), jwtMiddleware.OptionalAuthMiddleware)
+	e.GET("/banners", handlers.GetBanners(db.DB))
 
 	// Admin-only verification and status updates
 	admin.POST("/users/verify/:id", handlers.VerifyUser(db.DB))

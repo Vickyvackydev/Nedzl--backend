@@ -653,3 +653,73 @@ func SendPasswordResetSuccessMail(to, username string) error {
 	_, err := Client.Emails.Send(params)
 	return err
 }
+
+func SendNewProductsBulkMail(to []string, productNames []string) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	productListHtml := ""
+	for _, name := range productNames {
+		productListHtml += fmt.Sprintf("<li><strong>%s</strong></li>", name)
+	}
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 20px; margin-top: 0; }
+            .product-card { background: #f9fafb; border: 1px solid #edf2f7; border-radius: 8px; padding: 20px; margin: 25px 0; border-left: 4px solid #07B463; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; transition: background 0.3s ease; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>New Products Alert!</h2>
+                <p>We've just added some exciting new products to the NedZl marketplace that you might love. Check them out!</p>
+                
+                <div class="product-card">
+                    <p style="margin-top: 0; font-weight: 600; color: #234e52;">Featured New Arrivals:</p>
+                    <ul>
+                        %s
+                    </ul>
+                </div>
+
+                <p>Click the button below to explore these and many more items.</p>
+
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="https://nedzl.com" class="btn">Explore Marketplace</a>
+                </div>
+
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, productListHtml, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "noreply@nedzl.com",
+		To:      []string{"noreply@nedzl.com"}, // Send to self, bcc to users
+		Bcc:     to,
+		Html:    html,
+		Subject: "Check out what's new on NedZl!",
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
