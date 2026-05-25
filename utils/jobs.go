@@ -13,23 +13,30 @@ import (
 
 func StartJobs(db *gorm.DB) {
 	go func() {
+		log.Println("Jobs: Running initial bulk email check on startup...")
+		CheckAndSendBulkEmails(db)
+
 		// Run every 24 hours
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 
 		for {
 			<-ticker.C
+			log.Println("Jobs: Running periodic bulk email check...")
 			CheckAndSendBulkEmails(db)
 		}
 	}()
 }
 
 func CheckAndSendBulkEmails(db *gorm.DB) {
+	log.Println("Jobs: Checking database for unnotified products...")
 	var unnotifiedProducts []models.Products
 	if err := db.Where("is_notified = ?", false).Order("created_at desc").Find(&unnotifiedProducts).Error; err != nil {
 		log.Println("Error fetching unnotified products:", err)
 		return
 	}
+
+	log.Printf("Jobs: Found %d unnotified products in the database", len(unnotifiedProducts))
 
 	if len(unnotifiedProducts) >= 5 {
 
@@ -91,5 +98,7 @@ func CheckAndSendBulkEmails(db *gorm.DB) {
 				db.Model(&p).Update("is_notified", true)
 			}
 		}
+	} else {
+		log.Printf("Jobs: Threshold of 5 unnotified products not met (have %d). Skipping email sending.", len(unnotifiedProducts))
 	}
 }
