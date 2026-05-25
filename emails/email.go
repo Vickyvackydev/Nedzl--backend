@@ -691,19 +691,20 @@ func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailPr
 	for _, p := range products {
 		priceStr := formatPrice(p.Price)
 		productsHtml += fmt.Sprintf(`
-                <div style="display: flex; flex-direction: row; align-items: center; padding: 15px; border-bottom: 1px solid #edf2f7; gap: 15px;">
-                    <div style="width: 80px; height: 80px; overflow: hidden; border-radius: 8px; border: 1px solid #edf2f7; background-color: #f7fafc; flex-shrink: 0;">
-                        <img src="%s" alt="%s" style="width: 100%%; height: 100%%; object-fit: cover;" />
-                    </div>
-                    <div style="flex-grow: 1; min-width: 0; padding-left: 12px;">
-                        <h4 style="margin: 0 0 4px 0; color: #2d3748; font-size: 15px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">%s</h4>
-                        <p style="margin: 0 0 6px 0; color: #718096; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">%s</p>
-                        <span style="font-weight: 700; color: #07B463; font-size: 14px;">₦%s</span>
-                    </div>
-                    <div style="flex-shrink: 0; padding-left: 10px;">
-                        <a href="https://nedzl.com/product-details/%s" style="display: inline-block; background-color: #E8F8EE; color: #07B463; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600;">View</a>
-                    </div>
-                </div>`, p.ImageUrl, p.Name, p.Name, p.Description, priceStr, p.ID)
+                <table cellpadding="0" cellspacing="0" border="0" width="100%%" style="width: 100%%; border-bottom: 1px solid #edf2f7;">
+                    <tr>
+                        <td style="width: 80px; padding: 15px 0 15px 15px; vertical-align: middle;">
+                            <img src="%s" alt="%s" width="80" height="80" style="display: block; border-radius: 8px; object-fit: cover; width: 80px; height: 80px; border: 1px solid #edf2f7;" />
+                        </td>
+                        <td style="padding: 15px 15px 15px 15px; vertical-align: middle; text-align: left;">
+                            <h4 style="margin: 0 0 6px 0; color: #2d3748; font-size: 15px; font-weight: 600; line-height: 1.3;">%s</h4>
+                            <span style="font-weight: 700; color: #07B463; font-size: 14px;">₦%s</span>
+                        </td>
+                        <td style="width: 70px; padding: 15px 15px 15px 0; vertical-align: middle; text-align: right;">
+                            <a href="https://nedzl.com/product-details/%s" style="display: inline-block; background-color: #E8F8EE; color: #07B463; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; text-align: center;">View</a>
+                        </td>
+                    </tr>
+                </table>`, p.ImageUrl, p.Name, p.Name, priceStr, p.ID)
 	}
 
 	var emailRequests []*resend.SendEmailRequest
