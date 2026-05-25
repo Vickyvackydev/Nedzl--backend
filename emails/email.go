@@ -3,11 +3,39 @@ package emails
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/resend/resend-go/v3"
 )
+
+type BulkEmailRecipient struct {
+	Email    string
+	UserName string
+}
+
+type EmailProduct struct {
+	ID          string
+	Name        string
+	Price       float64
+	Description string
+	ImageUrl    string
+}
+
+func formatPrice(price float64) string {
+	parts := strings.Split(fmt.Sprintf("%.2f", price), ".")
+	intPart := parts[0]
+	var result []string
+	for len(intPart) > 3 {
+		result = append([]string{intPart[len(intPart)-3:]}, result...)
+		intPart = intPart[:len(intPart)-3]
+	}
+	if len(intPart) > 0 {
+		result = append([]string{intPart}, result...)
+	}
+	return strings.Join(result, ",")
+}
 
 var (
 	Client *resend.Client
@@ -654,17 +682,43 @@ func SendPasswordResetSuccessMail(to, username string) error {
 	return err
 }
 
-func SendNewProductsBulkMail(to []string, productNames []string) error {
+func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailProduct) error {
 	if Client == nil {
 		return fmt.Errorf("email client not initialized")
 	}
 
-	productListHtml := ""
-	for _, name := range productNames {
-		productListHtml += fmt.Sprintf("<li><strong>%s</strong></li>", name)
+	productsHtml := ""
+	for _, p := range products {
+		priceStr := formatPrice(p.Price)
+		productsHtml += fmt.Sprintf(`
+                <div style="display: flex; flex-direction: row; align-items: center; padding: 15px; border-bottom: 1px solid #edf2f7; gap: 15px;">
+                    <div style="width: 80px; height: 80px; overflow: hidden; border-radius: 8px; border: 1px solid #edf2f7; background-color: #f7fafc; flex-shrink: 0;">
+                        <img src="%s" alt="%s" style="width: 100%%; height: 100%%; object-fit: cover;" />
+                    </div>
+                    <div style="flex-grow: 1; min-width: 0; padding-left: 12px;">
+                        <h4 style="margin: 0 0 4px 0; color: #2d3748; font-size: 15px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">%s</h4>
+                        <p style="margin: 0 0 6px 0; color: #718096; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">%s</p>
+                        <span style="font-weight: 700; color: #07B463; font-size: 14px;">₦%s</span>
+                    </div>
+                    <div style="flex-shrink: 0; padding-left: 10px;">
+                        <a href="https://nedzl.com/product-details/%s" style="display: inline-block; background-color: #E8F8EE; color: #07B463; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600;">View</a>
+                    </div>
+                </div>`, p.ImageUrl, p.Name, p.Name, p.Description, priceStr, p.ID)
 	}
 
-	html := fmt.Sprintf(`
+	var emailRequests []*resend.SendEmailRequest
+
+	for _, r := range recipients {
+		firstName := r.UserName
+		if firstName == "" {
+			firstName = "there"
+		} else {
+			if parts := strings.Fields(firstName); len(parts) > 0 {
+				firstName = parts[0]
+			}
+		}
+
+		html := fmt.Sprintf(`
     <!DOCTYPE html>
     <html>
     <head>
@@ -672,13 +726,12 @@ func SendNewProductsBulkMail(to []string, productNames []string) error {
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
             .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-            .header { background: #07B463; padding: 40px 20px; text-align: center; }
-            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-            .content { padding: 40px; color: #333333; line-height: 1.6; }
-            .content h2 { color: #07B463; font-size: 20px; margin-top: 0; }
-            .product-card { background: #f9fafb; border: 1px solid #edf2f7; border-radius: 8px; padding: 20px; margin: 25px 0; border-left: 4px solid #07B463; }
-            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; transition: background 0.3s ease; }
-            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
         </style>
     </head>
     <body>
@@ -687,20 +740,18 @@ func SendNewProductsBulkMail(to []string, productNames []string) error {
                 <h1>NedZl</h1>
             </div>
             <div class="content">
-                <h2>New Products Alert!</h2>
-                <p>We've just added some exciting new products to the NedZl marketplace that you might love. Check them out!</p>
+                <h2>Hi %s,</h2>
+                <p>Just letting you know that some new listings have been posted on the NedZl campus board today. Take a quick look to see if anything catches your eye!</p>
                 
-                <div class="product-card">
-                    <p style="margin-top: 0; font-weight: 600; color: #234e52;">Featured New Arrivals:</p>
-                    <ul>
-                        %s
-                    </ul>
+                <div style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 12px; overflow: hidden; margin: 25px 0;">
+                    <p style="margin: 0; padding: 15px 15px 10px 15px; font-weight: 700; color: #2d3748; font-size: 15px; border-bottom: 1px solid #edf2f7; background-color: #fafbfc;">Recent Student Listings</p>
+                    %s
                 </div>
 
-                <p>Click the button below to explore these and many more items.</p>
+                <p>Click below to browse the items and contact the sellers directly.</p>
 
-                <div style="text-align: center; margin: 35px 0;">
-                    <a href="https://nedzl.com" class="btn">Explore Marketplace</a>
+                <div style="text-align: center; margin: 25px 0;">
+                    <a href="https://nedzl.com" class="btn">Browse Campus Board</a>
                 </div>
 
                 <p>Best regards,<br>The NedZl Team</p>
@@ -710,16 +761,30 @@ func SendNewProductsBulkMail(to []string, productNames []string) error {
             </div>
         </div>
     </body>
-    </html>`, productListHtml, time.Now().Year())
+    </html>`, firstName, productsHtml, time.Now().Year())
 
-	params := &resend.SendEmailRequest{
-		From:    "noreply@nedzl.com",
-		To:      []string{"noreply@nedzl.com"}, // Send to self, bcc to users
-		Bcc:     to,
-		Html:    html,
-		Subject: "Check out what's new on NedZl!",
+		req := &resend.SendEmailRequest{
+			From:    "noreply@nedzl.com",
+			To:      []string{r.Email},
+			Html:    html,
+			Subject: "New student listings posted on NedZl",
+		}
+		emailRequests = append(emailRequests, req)
 	}
 
-	_, err := Client.Emails.Send(params)
-	return err
+	const batchSize = 100
+	for i := 0; i < len(emailRequests); i += batchSize {
+		end := i + batchSize
+		if end > len(emailRequests) {
+			end = len(emailRequests)
+		}
+		batch := emailRequests[i:end]
+
+		_, err := Client.Batch.Send(batch)
+		if err != nil {
+			return fmt.Errorf("failed to send email batch starting at index %d: %w", i, err)
+		}
+	}
+
+	return nil
 }

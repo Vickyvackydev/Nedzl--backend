@@ -3,6 +3,7 @@ package utils
 import (
 	"api/emails"
 	"api/models"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -32,34 +33,59 @@ func CheckAndSendBulkEmails(db *gorm.DB) {
 
 	if len(unnotifiedProducts) >= 5 {
 
-		var productNames []string
+		var emailProducts []emails.EmailProduct
 		count := 0
 		for _, p := range unnotifiedProducts {
 			if count < 3 {
-				productNames = append(productNames, p.Name)
+				var images []string
+				imageUrl := ""
+				if len(p.ImageUrls) > 0 {
+					_ = json.Unmarshal(p.ImageUrls, &images)
+				}
+				if len(images) > 0 {
+					imageUrl = images[0]
+				} else {
+					imageUrl = "https://nedzl.com/placeholder.png"
+				}
+
+				desc := p.Description
+				if len(desc) > 120 {
+					desc = desc[:117] + "..."
+				}
+
+				emailProducts = append(emailProducts, emails.EmailProduct{
+					ID:          p.ID.String(),
+					Name:        p.Name,
+					Price:       p.ProductPrice,
+					Description: desc,
+					ImageUrl:    imageUrl,
+				})
 				count++
 			}
 		}
 
-		// Fetch all active users' emails
+		// Fetch all active users
 		var users []models.User
-		if err := db.Where("status = ?", "ACTIVE").Select("email").Find(&users).Error; err != nil {
+		if err := db.Where("status = ?", "ACTIVE").Select("email", "user_name").Find(&users).Error; err != nil {
 			log.Println("Error fetching active users:", err)
 			return
 		}
 
-		var emailsList []string
+		var recipients []emails.BulkEmailRecipient
 		for _, u := range users {
-			emailsList = append(emailsList, u.Email)
+			recipients = append(recipients, emails.BulkEmailRecipient{
+				Email:    u.Email,
+				UserName: u.UserName,
+			})
 		}
 
-		if len(emailsList) > 0 {
-			err := emails.SendNewProductsBulkMail(emailsList, productNames)
+		if len(recipients) > 0 {
+			err := emails.SendNewProductsBulkMail(recipients, emailProducts)
 			if err != nil {
 				log.Println("Error sending bulk email:", err)
 				return
 			}
-			fmt.Printf("Bulk email sent to %d users for %d new products\n", len(emailsList), len(unnotifiedProducts))
+			fmt.Printf("Bulk email sent to %d users for %d new products\n", len(recipients), len(unnotifiedProducts))
 
 			for _, p := range unnotifiedProducts {
 				db.Model(&p).Update("is_notified", true)
