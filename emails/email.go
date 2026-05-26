@@ -789,3 +789,81 @@ func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailPr
 
 	return nil
 }
+
+func SendCustomNewsletter(recipients []BulkEmailRecipient, subject, body string) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	var emailRequests []*resend.SendEmailRequest
+
+	for _, r := range recipients {
+		firstName := r.UserName
+		if firstName == "" {
+			firstName = "there"
+		} else {
+			if parts := strings.Fields(firstName); len(parts) > 0 {
+				firstName = parts[0]
+			}
+		}
+
+		html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>Hi %s,</h2>
+                <div style="color: #333333; font-size: 15px; white-space: pre-wrap; line-height: 1.6; margin-bottom: 25px;">
+%s
+                </div>
+                <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, firstName, body, time.Now().Year())
+
+		req := &resend.SendEmailRequest{
+			From:    "noreply@nedzl.com",
+			To:      []string{r.Email},
+			Html:    html,
+			Subject: subject,
+		}
+		emailRequests = append(emailRequests, req)
+	}
+
+	const batchSize = 100
+	for i := 0; i < len(emailRequests); i += batchSize {
+		end := i + batchSize
+		if end > len(emailRequests) {
+			end = len(emailRequests)
+		}
+		batch := emailRequests[i:end]
+
+		_, err := Client.Batch.Send(batch)
+		if err != nil {
+			return fmt.Errorf("failed to send newsletter batch starting at index %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+

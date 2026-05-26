@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"api/emails"
 	"api/models"
 	"api/utils"
 	"fmt"
@@ -718,3 +719,47 @@ func DeleteFeaturedProducts(db *gorm.DB) echo.HandlerFunc {
 		return utils.ResponseSucess(c, http.StatusOK, "All featured sections deleted successfully", nil)
 	}
 }
+
+func SendNewsletter(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var req struct {
+			Subject string `json:"subject"`
+			Message string `json:"message"`
+		}
+
+		if err := c.Bind(&req); err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input request", err)
+		}
+
+		if req.Subject == "" || req.Message == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Subject and message are required", nil)
+		}
+
+		var users []models.User
+		if err := db.Where("status = ?", models.UserActive).Find(&users).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch users", err)
+		}
+
+		if len(users) == 0 {
+			return utils.ResponseSucess(c, http.StatusOK, "No active users to email", nil)
+		}
+
+		var recipients []emails.BulkEmailRecipient
+		for _, u := range users {
+			recipients = append(recipients, emails.BulkEmailRecipient{
+				Email:    u.Email,
+				UserName: u.UserName,
+			})
+		}
+
+		// Send in a goroutine to prevent blocking the admin client
+		go func(rec []emails.BulkEmailRecipient, subj, msg string) {
+			if err := emails.SendCustomNewsletter(rec, subj, msg); err != nil {
+				fmt.Printf("Error sending custom newsletter email: %v\n", err)
+			}
+		}(recipients, req.Subject, req.Message)
+
+		return utils.ResponseSucess(c, http.StatusOK, fmt.Sprintf("Newsletter sending initiated for %d recipients", len(users)), nil)
+	}
+}
+

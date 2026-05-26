@@ -139,6 +139,7 @@ func main() {
 	admin.POST("/users/verify/:id", handlers.VerifyUser(db.DB))
 	admin.PATCH("/users/update/:id/status", handlers.UpdateUserStatus(db.DB))
 	admin.PATCH("/products/update/:id/status", handlers.UpdateProductStatus(db.DB))
+	admin.POST("/newsletter", handlers.SendNewsletter(db.DB))
 
 	// -- REVIEW ROUTES -->
 
