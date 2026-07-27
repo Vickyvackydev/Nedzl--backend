@@ -1,6 +1,7 @@
 package emails
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -867,3 +868,399 @@ func SendCustomNewsletter(recipients []BulkEmailRecipient, subject, body string)
 	return nil
 }
 
+func SendProductViewedMail(vendorEmail, vendorName, productName string, productID string) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	productLink := fmt.Sprintf("https://nedzl.com/product-details/%s", productID)
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; margin-top: 15px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>Good news, %s!</h2>
+                <p>Someone just viewed your listed product: <strong>%s</strong>.</p>
+                <p>Interested buyers are browsing the platform. Keep your store updated and be ready to reply to any inquiries!</p>
+                <div style="text-align: center; margin: 25px 0;">
+                    <a href="%s" class="btn">View Your Product</a>
+                </div>
+                <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, vendorName, productName, productLink, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "noreply@nedzl.com",
+		To:      []string{vendorEmail},
+		Html:    html,
+		Subject: fmt.Sprintf("👀 Someone viewed your product: %s", productName),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
+func SendSearchAlertNotificationMail(to, keyword, category, productName, productID string) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	productLink := fmt.Sprintf("https://nedzl.com/product-details/%s", productID)
+
+	searchDesc := ""
+	if keyword != "" && category != "" {
+		searchDesc = fmt.Sprintf(`"%s" in %s`, keyword, category)
+	} else if keyword != "" {
+		searchDesc = fmt.Sprintf(`"%s"`, keyword)
+	} else {
+		searchDesc = fmt.Sprintf("items in %s", category)
+	}
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; margin-top: 15px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>Good news!</h2>
+                <p>A new product matching your search for <strong>%s</strong> has been listed on NedZl.</p>
+                <p>Product: <strong>%s</strong></p>
+                <div style="text-align: center; margin: 25px 0;">
+                    <a href="%s" class="btn">View Product Details</a>
+                </div>
+                <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, searchDesc, productName, productLink, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "noreply@nedzl.com",
+		To:      []string{to},
+		Html:    html,
+		Subject: fmt.Sprintf("🔔 Product listed: %s", productName),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
+type SubMenuItem struct {
+	Name  string  `json:"name"`
+	Price float64 `json:"price"`
+}
+
+func FormatSubMenusHTML(submenusRaw string) string {
+	submenusRaw = strings.TrimSpace(submenusRaw)
+	if submenusRaw == "" || submenusRaw == "None" || submenusRaw == "null" || submenusRaw == "[]" {
+		return `<span style="color: #9ca3af; font-style: italic;">None</span>`
+	}
+
+	var items []SubMenuItem
+	err := json.Unmarshal([]byte(submenusRaw), &items)
+	if err != nil || len(items) == 0 {
+		if strings.HasPrefix(submenusRaw, "[") && strings.HasSuffix(submenusRaw, "]") {
+			submenusRaw = strings.Trim(submenusRaw, "[]\"")
+		}
+		if submenusRaw == "" {
+			return `<span style="color: #9ca3af; font-style: italic;">None</span>`
+		}
+		return fmt.Sprintf(`<span style="color: #374151; font-weight: 500;">%s</span>`, submenusRaw)
+	}
+
+	var htmlBuilder strings.Builder
+	htmlBuilder.WriteString(`<div style="margin-top: 6px; margin-bottom: 6px;">`)
+	for _, item := range items {
+		htmlBuilder.WriteString(fmt.Sprintf(
+			`<span style="display: inline-block; background-color: #ecfdf5; color: #047857; font-size: 13px; font-weight: 600; padding: 4px 10px; margin-right: 6px; margin-bottom: 6px; border-radius: 6px; border: 1px solid #a7f3d0;">`+
+				`✨ %s <span style="color: #059669; font-weight: 500;">(+₦%.2f)</span>`+
+				`</span>`,
+			item.Name, item.Price,
+		))
+	}
+	htmlBuilder.WriteString(`</div>`)
+
+	return htmlBuilder.String()
+}
+
+func SendVendorFoodOrderEmail(vendorEmail, vendorName, orderNumber, productName, customerName, customerPhone, deliveryAddress, submenusStr string, totalAmount, deliveryFee float64) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	formattedSubmenus := FormatSubMenusHTML(submenusStr)
+	platformFee := totalAmount * 0.10
+	vendorPayout := (totalAmount * 0.90)
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .order-card { background: #f9fafb; border: 1px solid #edf2f7; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #07B463; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>New Food Order Received!</h1>
+            </div>
+            <div class="content">
+                <h2>Hello %s,</h2>
+                <p>You have received a new meal order on Nedzl!</p>
+                <div class="order-card">
+                    <p style="margin: 0; font-weight: 700; color: #07B463;">Order #%s</p>
+                    <p style="margin: 8px 0 4px 0;"><strong>Meal:</strong> %s</p>
+                    <div style="margin: 8px 0;">
+                        <strong style="display: block; margin-bottom: 4px;">Extras / Sub-menus:</strong>
+                        %s
+                    </div>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
+                    <p style="margin: 5px 0;"><strong>Total Paid by Customer:</strong> ₦%.2f (Delivery Fee: ₦%.2f)</p>
+                    <p style="margin: 5px 0; color: #dc2626;"><strong>Platform Fee (10%% Nedzl Commission):</strong> -₦%.2f</p>
+                    <p style="margin: 5px 0; color: #059669; font-size: 16px;"><strong>Your Payout (90%% Net Balance):</strong> ₦%.2f</p>
+                    <p style="margin: 5px 0; font-size: 12px; color: #6b7280;"><em>Note: Funds are held in Escrow until delivery is confirmed by the customer, then paid out to your bank account.</em></p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 14px 0;" />
+                    <p style="margin: 5px 0;"><strong>Customer Name:</strong> %s</p>
+                    <p style="margin: 5px 0;"><strong>Customer Phone:</strong> <a href="tel:%s" style="color: #07B463; font-weight: bold;">%s</a></p>
+                    <p style="margin: 5px 0;"><strong>Delivery Address:</strong> %s</p>
+                </div>
+                <p>Please prepare the food and contact the customer for delivery!</p>
+                <div style="text-align: center; margin: 25px 0;">
+                    <a href="https://nedzl.com/dashboard?tab=food_orders" class="btn">View Orders Dashboard</a>
+                </div>
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, vendorName, orderNumber, productName, formattedSubmenus, totalAmount, deliveryFee, platformFee, vendorPayout, customerName, customerPhone, customerPhone, deliveryAddress, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "orders@nedzl.com",
+		To:      []string{vendorEmail},
+		Html:    html,
+		Subject: fmt.Sprintf("🍲 New Food Order #%s: %s", orderNumber, productName),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
+func SendArtisanBookingNotificationEmail(artisanEmail, artisanName, bookingNumber, serviceName, customerName, customerPhone, serviceAddress string, scheduledDate time.Time, bookingFee float64) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	dateStr := scheduledDate.Format("Mon, 02 Jan 2006 at 03:04 PM")
+	platformFee := bookingFee * 0.10
+	artisanPayout := bookingFee * 0.90
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .card { background: #f9fafb; border: 1px solid #edf2f7; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #07B463; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>New Service Booking Received!</h1>
+            </div>
+            <div class="content">
+                <h2>Hello %s,</h2>
+                <p>You have a new service booking on Nedzl. Payment has been secured in Escrow!</p>
+                <div class="card">
+                    <p style="margin: 0; font-weight: 700; color: #07B463;">Booking #%s</p>
+                    <p style="margin: 5px 0;"><strong>Service:</strong> %s</p>
+                    <p style="margin: 5px 0;"><strong>Scheduled Date:</strong> %s</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
+                    <p style="margin: 5px 0;"><strong>Booking Fee Paid:</strong> ₦%.2f</p>
+                    <p style="margin: 5px 0; color: #dc2626;"><strong>Platform Fee (10%% Nedzl Commission):</strong> -₦%.2f</p>
+                    <p style="margin: 5px 0; color: #059669; font-size: 16px;"><strong>Your Payout (90%% Net Balance):</strong> ₦%.2f (Held in Escrow)</p>
+                    <p style="margin: 5px 0; font-size: 12px; color: #6b7280;"><em>Note: Escrow funds are released to your bank account after customer confirms completion.</em></p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
+                    <p style="margin: 5px 0;"><strong>Customer Name:</strong> %s</p>
+                    <p style="margin: 5px 0;"><strong>Customer Phone:</strong> <a href="tel:%s" style="color: #07B463; font-weight: bold;">%s</a></p>
+                    <p style="margin: 5px 0;"><strong>Service Address:</strong> %s</p>
+                </div>
+                <p>Please contact the customer to confirm final details. When completed, mark the booking as completed in your dashboard to release payout!</p>
+                <div style="text-align: center; margin: 25px 0;">
+                    <a href="https://nedzl.com/dashboard?tab=service_bookings" class="btn">Manage Bookings</a>
+                </div>
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, artisanName, bookingNumber, serviceName, dateStr, bookingFee, platformFee, artisanPayout, customerName, customerPhone, customerPhone, serviceAddress, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "bookings@nedzl.com",
+		To:      []string{artisanEmail},
+		Html:    html,
+		Subject: fmt.Sprintf("🛠️ New Service Booking #%s: %s", bookingNumber, serviceName),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
+// SendPriceSlashNotificationMail sends an email to searchers when a product price drops
+func SendPriceSlashNotificationMail(toEmail, productName, productID string, oldPrice, newPrice float64, discountPct int) error {
+	if Client == nil {
+		InitEmailClient()
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head><style>
+.container { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; }
+.header { background: #07B463; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+.content { padding: 20px; color: #333; line-height: 1.6; }
+.btn { display: inline-block; background: #07B463; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; }
+.badge { background: #ef4444; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+</style></head>
+<body>
+<div class="container">
+	<div class="header">
+		<h1>PRICE DROP ALERT!</h1>
+	</div>
+	<div class="content">
+		<h2>Great news! %s is now %d%% OFF!</h2>
+		<p>A product you showed interest in on Nedzl just dropped in price!</p>
+		<div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0;">
+			<p style="margin: 5px 0;"><strong>Product:</strong> %s</p>
+			<p style="margin: 5px 0;"><strong>Original Price:</strong> <span style="text-decoration: line-through; color: #94a3b8;">₦%.2f</span></p>
+			<p style="margin: 5px 0; font-size: 18px; color: #07B463;"><strong>New Price:</strong> ₦%.2f <span class="badge">-%d%% OFF</span></p>
+		</div>
+		<div style="text-align: center; margin: 25px 0;">
+			<a href="https://nedzl.com/product-details/%s" class="btn">View & Purchase Now</a>
+		</div>
+		<p>Best regards,<br>The Nedzl Team</p>
+	</div>
+</div>
+</body>
+</html>`, productName, discountPct, productName, oldPrice, newPrice, discountPct, productID)
+
+	params := &resend.SendEmailRequest{
+		From:    "alerts@nedzl.com",
+		To:      []string{toEmail},
+		Html:    html,
+		Subject: fmt.Sprintf("Price Drop! %s is now %d%% OFF on Nedzl", productName, discountPct),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
+// SendGuestProductListedEmail sends an email to a non-registered user after they list a product
+func SendGuestProductListedEmail(toEmail, productName, productID string) error {
+	if Client == nil {
+		InitEmailClient()
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head><style>
+.container { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; }
+.header { background: #07B463; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+.content { padding: 20px; color: #333; line-height: 1.6; }
+.btn { display: inline-block; background: #07B463; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; }
+</style></head>
+<body>
+<div class="container">
+	<div class="header">
+		<h1>Your Product Has Been Listed on Nedzl!</h1>
+	</div>
+	<div class="content">
+		<h2>Hello!</h2>
+		<p>Your item <strong>"%s"</strong> has been successfully listed on the Nedzl Marketplace!</p>
+		<p>Buyers across campus and your location can now find and view your listing.</p>
+		<div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+			<p style="margin: 0; color: #166534; font-weight: bold;">💡 Tip: Register an Account to Manage Your Listing!</p>
+			<p style="margin: 5px 0 0 0; color: #15803d; font-size: 13px;">Create a free Nedzl account using this email (<strong>%s</strong>) to easily edit your item, receive buyer messages, track views, and accept orders!</p>
+		</div>
+		<div style="text-align: center; margin: 25px 0;">
+			<a href="https://nedzl.com/register?email=%s" class="btn">Create Free Account to Track Product</a>
+		</div>
+		<p>Best regards,<br>The Nedzl Team</p>
+	</div>
+</div>
+</body>
+</html>`, productName, toEmail, toEmail)
+
+	params := &resend.SendEmailRequest{
+		From:    "marketplace@nedzl.com",
+		To:      []string{toEmail},
+		Html:    html,
+		Subject: fmt.Sprintf("Product Listed: %s on Nedzl Marketplace", productName),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}

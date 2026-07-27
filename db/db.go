@@ -73,6 +73,10 @@ func ConnectDb() {
 		&models.ProductLike{},
 		&models.Contact{},
 		&models.Banner{},
+		&models.SearchAlert{},
+		&models.FoodOrder{},
+		&models.ServiceBooking{},
+		&models.CommunityMessage{},
 	); err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}

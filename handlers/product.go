@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"api/emails"
 	"api/models"
 	"api/utils"
 	"encoding/json"
@@ -72,6 +73,14 @@ func ConvertToProductResponse(product models.Products, isLiked bool) models.Prod
 		Likes:             product.Likes,
 		IsLikedByMe:       isLiked,
 		IsDeletedByUser:   product.IsDeletedByUser,
+		ProductType:       product.ProductType,
+		SubMenus:          product.SubMenus,
+		DeliveryFee:       product.DeliveryFee,
+		OldPrice:          product.OldPrice,
+		DiscountPercent:   product.DiscountPercent,
+		GuestEmail:        product.GuestEmail,
+		GuestPhone:        product.GuestPhone,
+		IsGuestListing:    product.IsGuestListing,
 	}
 }
 
@@ -93,6 +102,18 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		brandName := c.FormValue("brand_name")
 		status := c.FormValue("status")
 		university := c.FormValue("university")
+		productType := c.FormValue("product_type")
+		subMenusRaw := c.FormValue("sub_menus")
+		deliveryFeeStr := c.FormValue("delivery_fee")
+
+		if productType == "" {
+			productType = "MARKET"
+		}
+
+		var deliveryFee float64
+		if deliveryFeeStr != "" {
+			deliveryFee, _ = strconv.ParseFloat(deliveryFeeStr, 64)
+		}
 
 		// if name == "" || productPriceStr == "" || marketPriceFromStr == "" || marketPriceToStr == "" || categoryName == "" || isNegotiableStr == "" || description == "" || state == "" || addressInState == "" || outstandingIssues == "" || condition == "" || brandName == "" {
 		// 	return c.JSON(http.StatusBadRequest, echo.Map{"error": "All fields are required"})
@@ -185,7 +206,10 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			BrandName:         brandName,
 			ImageUrls:         datatypes.JSON(imageUrlsJSON),
 			Status:            models.Status(status),
-			UserID:            userId,
+			UserID:            &userId,
+			ProductType:       productType,
+			SubMenus:          datatypes.JSON([]byte(subMenusRaw)),
+			DeliveryFee:       deliveryFee,
 		}
 
 		if err := db.Create(&products).Error; err != nil {
@@ -200,22 +224,37 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		// Convert to safe response without password
 		response := ConvertToProductResponse(products, false)
 
-		// Trigger Facebook Auto-Post in a goroutine so it doesn't slow down the response
+		// Trigger Facebook Auto-Post and Search Alerts in background
 		go func(p models.Products) {
+			// 1. Facebook/Instagram Auto Post
 			message := fmt.Sprintf("🛍️ New Product Alert: %s\n\nPrice: ₦%.2f\nCondition: %s\n\nCheck it out on Nedzl!", p.Name, p.ProductPrice, p.Condition)
-
 			link := fmt.Sprintf("https://nedzl.com/product-details/%s", p.ID.String())
 			igCaption := fmt.Sprintf("%s\n\nLink in bio or copy: %s", message, link)
-			if len(imageUrls) == 0 {
+			if len(imageUrls) > 0 {
+				imageUrl := imageUrls[0]
+				if err := utils.PostToFacebook(message, imageUrl, link); err != nil {
+					log.Printf("Facebook auto-post failed for product %s: %v", p.ID, err)
+				}
+				if err := utils.PostToInstagram(igCaption, imageUrl); err != nil {
+					log.Printf("Instagram auto-post failed for product %s: %v", p.ID, err)
+				}
+			}
+
+			// 2. Search Alerts Matching
+			var alerts []models.SearchAlert
+			err := db.Where("(category = '' OR category = ?) AND (keyword = '' OR ? ILIKE '%' || keyword || '%')",
+				p.CategoryName, p.Name).Find(&alerts).Error
+			if err != nil {
+				log.Printf("Failed to fetch search alerts: %v", err)
 				return
 			}
-			imageUrl := imageUrls[0] // Use the first image as the preview
-
-			if err := utils.PostToFacebook(message, imageUrl, link); err != nil {
-				log.Printf("Facebook auto-post failed for product %s: %v", p.ID, err)
-			}
-			if err := utils.PostToInstagram(igCaption, imageUrl); err != nil {
-				log.Printf("Instagram auto-post failed for product %s: %v", p.ID, err)
+			for _, alert := range alerts {
+				err := emails.SendSearchAlertNotificationMail(alert.Email, alert.Keyword, alert.Category, p.Name, p.ID.String())
+				if err != nil {
+					log.Printf("Failed to send search alert email to %s: %v", alert.Email, err)
+				} else {
+					db.Delete(&alert)
+				}
 			}
 		}(products)
 
@@ -248,24 +287,25 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 		brandName := c.FormValue("brand_name")
 		status := c.FormValue("status")
 		university := c.FormValue("university")
+		productType := c.FormValue("product_type")
+		subMenusRaw := c.FormValue("sub_menus")
+		deliveryFeeStr := c.FormValue("delivery_fee")
 
-		if productName == "" || productPrice == "" || marketPriceFrom == "" || marketPriceTo == "" ||
-			categoryName == "" || isNegotiable == "" || description == "" || state == "" || brandName == "" ||
-			addressInState == "" || condition == "" || university == "" {
-			return utils.ResponseError(c, http.StatusBadRequest, "All fields are required", nil)
+		if productName == "" || productPrice == "" || categoryName == "" || description == "" || state == "" || addressInState == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Required fields are missing", nil)
 		}
 
 		productP, err := strconv.ParseFloat(productPrice, 64)
 		if err != nil {
 			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product price", err)
 		}
-		marketPFrom, err := strconv.ParseFloat(marketPriceFrom, 64)
-		if err != nil {
-			return utils.ResponseError(c, http.StatusBadRequest, "Invalid market price (from)", err)
+		marketPFrom, _ := strconv.ParseFloat(marketPriceFrom, 64)
+		if marketPFrom == 0 {
+			marketPFrom = productP
 		}
-		marketPTo, err := strconv.ParseFloat(marketPriceTo, 64)
-		if err != nil {
-			return utils.ResponseError(c, http.StatusBadRequest, "Invalid market price (to)", err)
+		marketPTo, _ := strconv.ParseFloat(marketPriceTo, 64)
+		if marketPTo == 0 {
+			marketPTo = productP
 		}
 
 		// Convert string ("true"/"false") to bool
@@ -326,19 +366,53 @@ func UpdateUserProduct(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to process image URLs", err)
 		}
 
+		// Detect Price Reduction / Price Slash
+		if productP < existingProduct.ProductPrice && existingProduct.ProductPrice > 0 {
+			oldP := existingProduct.ProductPrice
+			disc := int(math.Round(((oldP - productP) / oldP) * 100))
+			existingProduct.OldPrice = oldP
+			existingProduct.DiscountPercent = disc
+
+			// Notify users who searched for or viewed this product category in background
+			go func(p models.Products, oldPrice float64, newPrice float64, discountPct int) {
+				var alerts []models.SearchAlert
+				_ = db.Where("(category = '' OR category = ?) AND (keyword = '' OR ? ILIKE '%' || keyword || '%')", p.CategoryName, p.Name).Find(&alerts).Error
+				for _, alert := range alerts {
+					_ = emails.SendPriceSlashNotificationMail(alert.Email, p.Name, p.ID.String(), oldPrice, newPrice, discountPct)
+				}
+			}(existingProduct, oldP, productP, disc)
+		}
+
 		existingProduct.Name = productName
 		existingProduct.ProductPrice = productP
 		existingProduct.MarketPriceFrom = marketPFrom
 		existingProduct.MarketPriceTo = marketPTo
 		existingProduct.CategoryName = categoryName
-		existingProduct.Condition = condition
-		existingProduct.BrandName = brandName
+		if condition != "" {
+			existingProduct.Condition = condition
+		}
+		if brandName != "" {
+			existingProduct.BrandName = brandName
+		}
 		existingProduct.Description = description
 		existingProduct.IsNegotiable = isNeg
 		existingProduct.OutStandingIssues = outstandingIssues
 		existingProduct.AddressInState = addressInState
 		existingProduct.ImageUrls = updatedImageUrlJson
-		existingProduct.University = university
+		if university != "" {
+			existingProduct.University = university
+		}
+
+		if productType != "" {
+			existingProduct.ProductType = productType
+		}
+		if subMenusRaw != "" {
+			existingProduct.SubMenus = datatypes.JSON([]byte(subMenusRaw))
+		}
+		if deliveryFeeStr != "" {
+			deliveryFee, _ := strconv.ParseFloat(deliveryFeeStr, 64)
+			existingProduct.DeliveryFee = deliveryFee
+		}
 
 		if status != "" {
 			existingProduct.Status = models.Status(status)
@@ -393,6 +467,22 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		offSet := (page - 1) * limit
 
 		// -- APPLY FILTERS --
+		productType := c.QueryParam("product_type")
+		if productType == "MARKET" {
+			query = query.Where("product_type IS NULL OR product_type = 'MARKET' OR product_type = ''")
+		} else if productType == "FOOD" {
+			query = query.Where("product_type = ? OR category_name IN ('prepared-food', 'foodstuffs', 'fruits-vegetables')", "FOOD")
+		} else if productType == "SERVICE" {
+			query = query.Where("product_type = ? OR category_name = 'other-services'", "SERVICE")
+		} else if productType != "" {
+			query = query.Where("product_type = ?", productType)
+		} else if category == "prepared-food" || category == "foodstuffs" || category == "fruits-vegetables" {
+			query = query.Where("product_type = ?", "FOOD")
+		} else if category == "other-services" {
+			query = query.Where("product_type = ?", "SERVICE")
+		} else {
+			query = query.Where("product_type IS NULL OR product_type = 'MARKET' OR product_type = ''")
+		}
 
 		if search != "" {
 			query = query.Where("name ILIKE ?", "%"+search+"%")
@@ -535,6 +625,17 @@ func GetUserProducts(db *gorm.DB) echo.HandlerFunc {
 		offset := (page - 1) * limit
 
 		// --- APPLY FILTERS ---
+		productType := c.QueryParam("product_type")
+		if productType == "MARKET" {
+			query = query.Where("product_type IS NULL OR product_type = 'MARKET' OR product_type = ''")
+		} else if productType == "FOOD" {
+			query = query.Where("product_type = ? OR category_name IN ('prepared-food', 'foodstuffs', 'fruits-vegetables')", "FOOD")
+		} else if productType == "SERVICE" {
+			query = query.Where("product_type = ? OR category_name = 'other-services'", "SERVICE")
+		} else if productType != "" && productType != "ALL" {
+			query = query.Where("product_type = ?", productType)
+		}
+
 		if search != "" {
 			query = query.Where("name ILIKE ?", "%"+search+"%")
 		}
@@ -630,6 +731,14 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 
 		// Increment view count
 		db.Model(&product).Update("views", gorm.Expr("views + ?", 1))
+
+		// Send email if first view and is_notified is false
+		if !product.IsNotified && product.User.Email != "" {
+			db.Model(&product).Update("is_notified", true)
+			go func(email, uName, pName string, pID uuid.UUID) {
+				_ = emails.SendProductViewedMail(email, uName, pName, pID.String())
+			}(product.User.Email, product.User.UserName, product.Name, product.ID)
+		}
 
 		// Check if user has liked this product
 		isLiked := false
@@ -936,5 +1045,189 @@ func ToggleLike(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		return utils.ResponseError(c, http.StatusInternalServerError, "Database error", err)
+	}
+}
+
+func CreateSearchAlert(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var req struct {
+			Email    string `json:"email"`
+			Keyword  string `json:"keyword"`
+			Category string `json:"category"`
+		}
+
+		if err := c.Bind(&req); err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
+		}
+
+		if req.Email == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Email is required", nil)
+		}
+
+		alert := models.SearchAlert{
+			Email:    req.Email,
+			Keyword:  req.Keyword,
+			Category: req.Category,
+		}
+
+		if err := db.Create(&alert).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create search alert", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusCreated, "Search alert created successfully", nil)
+	}
+}
+
+func GetPublicStats(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var productCount int64
+		var sellerCount int64
+
+		if err := db.Model(&models.Products{}).Where("status = ? AND is_deleted_by_user = ?", models.StatusOngoing, false).Count(&productCount).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count products", err)
+		}
+
+		if err := db.Model(&models.User{}).Where("role = ? AND status = ?", models.RoleUser, models.UserActive).Count(&sellerCount).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to count vendors", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Public stats fetched successfully", echo.Map{
+			"total_products": productCount,
+			"total_sellers":  sellerCount,
+		})
+	}
+}
+
+// CreateGuestProduct allows unregistered users to quickly list 1 physical selling item
+func CreateGuestProduct(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		guestEmail := strings.TrimSpace(c.FormValue("guest_email"))
+		guestPhone := strings.TrimSpace(c.FormValue("guest_phone"))
+
+		if guestEmail == "" || guestPhone == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Guest email and phone number are required", nil)
+		}
+
+		// Enforce limit: Unregistered guests can only list 1 product
+		var count int64
+		db.Model(&models.Products{}).Where("is_guest_listing = ? AND (guest_email = ? OR guest_phone = ?)", true, guestEmail, guestPhone).Count(&count)
+		if count >= 1 {
+			return c.JSON(http.StatusBadRequest, map[string]interface{}{
+				"status":  false,
+				"message": "Unregistered users can only list 1 product. Please register or login to manage and list more products.",
+			})
+		}
+
+		name := c.FormValue("product_name")
+		productPriceStr := c.FormValue("product_price")
+		marketPriceFromStr := c.FormValue("market_price_from")
+		marketPriceToStr := c.FormValue("market_price_to")
+		categoryName := c.FormValue("category_name")
+		isNegotiableStr := c.FormValue("is_negotiable")
+		description := c.FormValue("description")
+		state := c.FormValue("state")
+		addressInState := c.FormValue("address_in_state")
+		outstandingIssues := c.FormValue("outstanding_issues")
+		condition := c.FormValue("condition")
+		brandName := c.FormValue("brand_name")
+		university := c.FormValue("university")
+
+		// Guest listings are restricted strictly to selling items (MARKET)
+		productType := "MARKET"
+
+		if name == "" || productPriceStr == "" || categoryName == "" || description == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Required fields are missing", nil)
+		}
+
+		productPrice, err := strconv.ParseFloat(productPriceStr, 64)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid product price", err)
+		}
+		marketPriceFrom, _ := strconv.ParseFloat(marketPriceFromStr, 64)
+		if marketPriceFrom == 0 {
+			marketPriceFrom = productPrice
+		}
+		marketPriceTo, _ := strconv.ParseFloat(marketPriceToStr, 64)
+		if marketPriceTo == 0 {
+			marketPriceTo = productPrice
+		}
+
+		isNegotiable := strings.ToLower(isNegotiableStr) == "true"
+
+		form, err := c.MultipartForm()
+		if err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid form input", err)
+		}
+
+		files := form.File["new_images"]
+		if len(files) == 0 {
+			return utils.ResponseError(c, http.StatusBadRequest, "You must upload at least one image", nil)
+		}
+
+		var imageUrls []string
+		for _, file := range files {
+			src, err := file.Open()
+			if err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to open image", err)
+			}
+
+			tempFilePath := filepath.Join(os.TempDir(), uuid.New().String()+"_"+filepath.Base(file.Filename))
+			out, err := os.Create(tempFilePath)
+			if err != nil {
+				src.Close()
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create temp file", err)
+			}
+
+			if _, err := io.Copy(out, src); err != nil {
+				src.Close()
+				out.Close()
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to copy image", err)
+			}
+			src.Close()
+			out.Close()
+
+			url, err := utils.UploadToCloudinary(tempFilePath, "guest_products")
+			if err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to upload image", err)
+			}
+			imageUrls = append(imageUrls, url)
+			os.Remove(tempFilePath)
+		}
+
+		imageUrlsJSON, _ := json.Marshal(imageUrls)
+
+		product := models.Products{
+			Name:              name,
+			ProductPrice:      productPrice,
+			Description:       description,
+			MarketPriceFrom:   marketPriceFrom,
+			MarketPriceTo:     marketPriceTo,
+			CategoryName:      categoryName,
+			IsNegotiable:      isNegotiable,
+			State:             state,
+			AddressInState:    addressInState,
+			OutStandingIssues: outstandingIssues,
+			Condition:         condition,
+			University:        university,
+			BrandName:         brandName,
+			ImageUrls:         datatypes.JSON(imageUrlsJSON),
+			Status:            models.StatusOngoing,
+			ProductType:       productType,
+			GuestEmail:        guestEmail,
+			GuestPhone:        guestPhone,
+			IsGuestListing:    true,
+		}
+
+		if err := db.Create(&product).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to save guest product", err)
+		}
+
+		// Send Email to Guest User informing them of listing and encouraging account registration
+		go func(email, pName, pID string) {
+			_ = emails.SendGuestProductListedEmail(email, pName, pID)
+		}(guestEmail, name, product.ID.String())
+
+		response := ConvertToProductResponse(product, false)
+		return utils.ResponseSucess(c, http.StatusCreated, "Product listed successfully as guest", echo.Map{"products": response})
 	}
 }

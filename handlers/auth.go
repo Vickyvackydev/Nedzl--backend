@@ -4,6 +4,7 @@ import (
 	"api/emails"
 	"api/models"
 	"api/utils"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -189,6 +190,16 @@ func Register(db *gorm.DB) echo.HandlerFunc {
 		if err := db.Create(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
 		}
+
+		// Claim any guest-listed products created prior to registration
+		go func(uID uuid.UUID, email, phone string) {
+			db.Model(&models.Products{}).
+				Where("is_guest_listing = ? AND (guest_email = ? OR (guest_phone = ? AND guest_phone != ''))", true, email, phone).
+				Updates(map[string]interface{}{
+					"user_id":          uID,
+					"is_guest_listing": false,
+				})
+		}(user.ID, user.Email, user.PhoneNumber)
 
 		if referer.ID != uuid.Nil {
 			if err := db.Model(&models.User{}).Where("id = ?", referer.ID).UpdateColumn("referral_count", gorm.Expr("referral_count + ?", 1)).Error; err != nil {
@@ -449,3 +460,201 @@ func ResetPassword(db *gorm.DB) echo.HandlerFunc {
 // 	}
 
 // }
+
+func verifyGoogleToken(token string) (string, string, string, error) {
+	resp, err := http.Get("https://oauth2.googleapis.com/tokeninfo?id_token=" + token)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		var res struct {
+			Email   string `json:"email"`
+			Name    string `json:"name"`
+			Picture string `json:"picture"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err == nil && res.Email != "" {
+			return res.Email, res.Name, res.Picture, nil
+		}
+	}
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	resp, err = http.Get("https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + token)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		var res struct {
+			Email   string `json:"email"`
+			Name    string `json:"name"`
+			Picture string `json:"picture"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err == nil && res.Email != "" {
+			return res.Email, res.Name, res.Picture, nil
+		}
+	}
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	return "", "", "", fmt.Errorf("invalid google token or failed verification")
+}
+
+func verifyFacebookToken(token string) (string, string, string, error) {
+	resp, err := http.Get("https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=" + token)
+	if err != nil {
+		return "", "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", "", fmt.Errorf("facebook token verification failed with status %d", resp.StatusCode)
+	}
+
+	var fbRes struct {
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Picture struct {
+			Data struct {
+				URL string `json:"url"`
+			} `json:"data"`
+		} `json:"picture"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&fbRes); err != nil {
+		return "", "", "", err
+	}
+
+	if fbRes.Email == "" {
+		fbRes.Email = strings.ReplaceAll(fbRes.Name, " ", "") + "@facebook.com"
+	}
+
+	return fbRes.Email, fbRes.Name, fbRes.Picture.Data.URL, nil
+}
+
+func GoogleLogin(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var req models.SocialLoginRequest
+		if err := c.Bind(&req); err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
+		}
+
+		if req.Token == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Token is required", nil)
+		}
+
+		email, name, picture, err := verifyGoogleToken(req.Token)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid Google token", err)
+		}
+
+		var user models.User
+		err = db.Where("email = ?", email).First(&user).Error
+		if err == gorm.ErrRecordNotFound {
+			user = models.User{
+				UserName:      name,
+				Email:         email,
+				Role:          models.RoleUser,
+				Password:      "",
+				ImageUrl:      picture,
+				EmailVerified: true,
+				IsVerified:    true,
+				ReferralCode:  generateReferralCode(),
+			}
+			if err := db.Create(&user).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
+			}
+		} else if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Database error", err)
+		} else {
+			if user.ImageUrl == "" {
+				user.ImageUrl = picture
+				db.Save(&user)
+			}
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user_id": user.ID.String(),
+			"role":    string(user.Role),
+			"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		})
+
+		tokenString, err := token.SignedString(getJWTSecret())
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to generate token", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Login successfully", echo.Map{
+			"token": tokenString,
+			"user": map[string]string{
+				"user_name":      user.UserName,
+				"email":          user.Email,
+				"phone_number":   user.PhoneNumber,
+				"role":           string(user.Role),
+				"referral_count": fmt.Sprintf("%d", user.ReferralCount),
+			},
+		})
+	}
+}
+
+func FacebookLogin(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var req models.SocialLoginRequest
+		if err := c.Bind(&req); err != nil {
+			return utils.ResponseError(c, http.StatusBadRequest, "Invalid input", err)
+		}
+
+		if req.Token == "" {
+			return utils.ResponseError(c, http.StatusBadRequest, "Token is required", nil)
+		}
+
+		email, name, picture, err := verifyFacebookToken(req.Token)
+		if err != nil {
+			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid Facebook token", err)
+		}
+
+		var user models.User
+		err = db.Where("email = ?", email).First(&user).Error
+		if err == gorm.ErrRecordNotFound {
+			user = models.User{
+				UserName:      name,
+				Email:         email,
+				Role:          models.RoleUser,
+				Password:      "",
+				ImageUrl:      picture,
+				EmailVerified: true,
+				IsVerified:    true,
+				ReferralCode:  generateReferralCode(),
+			}
+			if err := db.Create(&user).Error; err != nil {
+				return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create user", err)
+			}
+		} else if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Database error", err)
+		} else {
+			if user.ImageUrl == "" {
+				user.ImageUrl = picture
+				db.Save(&user)
+			}
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user_id": user.ID.String(),
+			"role":    string(user.Role),
+			"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		})
+
+		tokenString, err := token.SignedString(getJWTSecret())
+		if err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to generate token", err)
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, "Login successfully", echo.Map{
+			"token": tokenString,
+			"user": map[string]string{
+				"user_name":      user.UserName,
+				"email":          user.Email,
+				"phone_number":   user.PhoneNumber,
+				"role":           string(user.Role),
+				"referral_count": fmt.Sprintf("%d", user.ReferralCount),
+			},
+		})
+	}
+}

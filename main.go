@@ -75,6 +75,8 @@ func main() {
 	e.POST("/auth/verify-email", handlers.VerifyEmail(db.DB))
 	e.POST("/auth/forgot-password", handlers.ForgotPassword(db.DB))
 	e.POST("/auth/reset-password", handlers.ResetPassword(db.DB))
+	e.POST("/auth/google", handlers.GoogleLogin(db.DB))
+	e.POST("/auth/facebook", handlers.FacebookLogin(db.DB))
 	e.POST("/contact", handlers.Contact(db.DB))
 
 	auth := e.Group("")
@@ -89,6 +91,7 @@ func main() {
 	e.GET("/products/search", handlers.SearchProducts(db.DB))
 	e.GET("/products/:id/similar", handlers.GetSimilarProducts(db.DB))
 	e.GET("/products/search/results", handlers.GetSearchResults(db.DB))
+	e.POST("/products/search-alert", handlers.CreateSearchAlert(db.DB))
 	auth.PUT("/products/:id/user", handlers.UpdateUserProduct(db.DB))
 	auth.GET("/products/user", handlers.GetUserProducts(db.DB))
 	auth.GET("/products/:id/user", handlers.GetUserProduct(db.DB))
@@ -98,6 +101,19 @@ func main() {
 
 	// -- FACEBOOK INTEGRATION ROUTES -- >
 	e.GET("/api/facebook/feed", handlers.GetFacebookProductFeed(db.DB))
+
+	// -- FOOD ORDERS ROUTES -- >
+	auth.POST("/food-orders", handlers.CreateFoodOrder(db.DB))
+	auth.GET("/food-orders/user", handlers.GetUserFoodOrders(db.DB))
+	auth.GET("/food-orders/vendor", handlers.GetVendorFoodOrders(db.DB))
+	auth.PATCH("/food-orders/:id/status", handlers.UpdateFoodOrderStatus(db.DB))
+
+	// -- SERVICE BOOKINGS ROUTES -- >
+	auth.POST("/service-bookings", handlers.CreateServiceBooking(db.DB))
+	auth.GET("/service-bookings/user", handlers.GetUserServiceBookings(db.DB))
+	auth.GET("/service-bookings/artisan", handlers.GetArtisanServiceBookings(db.DB))
+	auth.PATCH("/service-bookings/:id/artisan-complete", handlers.ArtisanCompleteBooking(db.DB))
+	auth.PATCH("/service-bookings/:id/customer-complete", handlers.CustomerCompleteBooking(db.DB))
 
 	// -- USER ROUTES -->
 	auth.GET("/me", handlers.Me)
@@ -134,6 +150,7 @@ func main() {
 	// Global featured products access (optional auth)
 	e.GET("/feature-products", handlers.GetFeaturedSections(db.DB), jwtMiddleware.OptionalAuthMiddleware)
 	e.GET("/banners", handlers.GetBanners(db.DB))
+	e.GET("/public-stats", handlers.GetPublicStats(db.DB))
 
 	// Admin-only verification and status updates
 	admin.POST("/users/verify/:id", handlers.VerifyUser(db.DB))
@@ -148,6 +165,19 @@ func main() {
 	// Authenticated routes for reviews
 	auth.GET("/reviews/user", handlers.GetCustomerMyReviews(db.DB)) // Get all reviews I (as a customer) have written
 	auth.GET("/reviews/seller", handlers.GetSellerReviews(db.DB))   // Get all reviews on my products (as a seller)
+	// -- PAYSTACK WEBHOOK & BANK RESOLVE ROUTES -->
+	e.POST("/paystack/webhook", handlers.HandlePaystackWebhook)
+	e.GET("/bank/resolve", handlers.ResolveBank)
+	auth.GET("/bank/resolve", handlers.ResolveBank)
+
+	// -- NEDZL COMMUNITY ROUTES -->
+	e.GET("/community/messages", handlers.GetCommunityMessages)
+	e.POST("/community/send", handlers.SendCommunityMessage, jwtMiddleware.OptionalAuthMiddleware)
+	e.POST("/community/messages/:id/react", handlers.ReactToCommunityMessage)
+
+	// -- GUEST PRODUCT LISTING ROUTE -->
+	e.POST("/products/guest-create", handlers.CreateGuestProduct(db.DB))
+
 	// Get port from environment variable (Railway provides PORT)
 	port := os.Getenv("PORT")
 	if port == "" {

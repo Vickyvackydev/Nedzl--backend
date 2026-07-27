@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -73,6 +74,10 @@ func GetUserById(db *gorm.DB) echo.HandlerFunc {
 			ImageUrl:      user.ImageUrl,
 			PhoneNumber:   user.PhoneNumber,
 			Location:      user.Location,
+			BankName:      user.BankName,
+			AccountNumber: user.AccountNumber,
+			AccountName:   user.AccountName,
+			BankAccounts:  user.BankAccounts,
 			Status:        user.Status,
 			IsVerified:    user.IsVerified,
 			ReferralCode:  user.ReferralCode,
@@ -101,6 +106,10 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 		email := c.FormValue("email")
 		phone := c.FormValue("phone_number")
 		location := c.FormValue("location")
+		bankName := c.FormValue("bank_name")
+		accountNumber := c.FormValue("account_number")
+		accountName := c.FormValue("account_name")
+		bankAccounts := c.FormValue("bank_accounts")
 
 		// update only if new values provided
 		if name != "" {
@@ -114,6 +123,18 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 		}
 		if location != "" {
 			user.Location = location
+		}
+		if bankName != "" {
+			user.BankName = bankName
+		}
+		if accountNumber != "" {
+			user.AccountNumber = accountNumber
+		}
+		if accountName != "" {
+			user.AccountName = accountName
+		}
+		if bankAccounts != "" {
+			user.BankAccounts = datatypes.JSON(bankAccounts)
 		}
 
 		// handle optional image upload
@@ -163,6 +184,10 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 			Role:          string(user.Role),
 			ImageUrl:      user.ImageUrl,
 			Location:      user.Location,
+			BankName:      user.BankName,
+			AccountNumber: user.AccountNumber,
+			AccountName:   user.AccountName,
+			BankAccounts:  user.BankAccounts,
 			ReferralCount: user.ReferralCount,
 			IsVerified:    user.IsVerified,
 			CreatedAt:     user.CreatedAt,
@@ -194,6 +219,10 @@ func Me(c echo.Context) error {
 		PhoneNumber:   user.PhoneNumber,
 		ImageUrl:      user.ImageUrl,
 		Location:      user.Location,
+		BankName:      user.BankName,
+		AccountNumber: user.AccountNumber,
+		AccountName:   user.AccountName,
+		BankAccounts:  user.BankAccounts,
 		IsVerified:    user.IsVerified,
 		ReferralCode:  user.ReferralCode,
 		ReferralBy:    user.ReferralBy,
@@ -204,7 +233,23 @@ func Me(c echo.Context) error {
 		DeletedAt:     user.DeletedAt,
 	}
 
-	return utils.ResponseSucess(c, http.StatusOK, "User Details Retrieved", echo.Map{"user": publicUser})
+	var viewsCount, likesCount, totalListed, totalSold int64
+	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ?", userID, false).Select("COALESCE(SUM(views), 0)").Scan(&viewsCount)
+	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ?", userID, false).Select("COALESCE(SUM(likes), 0)").Scan(&likesCount)
+	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ?", userID, false).Count(&totalListed)
+	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ? AND status = ?", userID, false, models.StatusClosed).Count(&totalSold)
+
+	metrics := echo.Map{
+		"total_views":  viewsCount,
+		"total_likes":  likesCount,
+		"total_listed": totalListed,
+		"total_sold":   totalSold,
+	}
+
+	return utils.ResponseSucess(c, http.StatusOK, "User Details Retrieved", echo.Map{
+		"user":    publicUser,
+		"metrics": metrics,
+	})
 }
 
 func DeleteUser(db *gorm.DB) echo.HandlerFunc {

@@ -26,6 +26,48 @@ func StartJobs(db *gorm.DB) {
 			CheckAndSendBulkEmails(db)
 		}
 	}()
+
+	go func() {
+		log.Println("Jobs: Starting Escrow Auto-Release background worker...")
+		AutoReleaseEscrowBookings(db)
+
+		// Check every 15 minutes
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			<-ticker.C
+			AutoReleaseEscrowBookings(db)
+		}
+	}()
+}
+
+func AutoReleaseEscrowBookings(db *gorm.DB) {
+	cutoff := time.Now().Add(-24 * time.Hour)
+	var pendingBookings []models.ServiceBooking
+
+	err := db.Where("status = ? AND artisan_completed_at <= ?", "ARTISAN_COMPLETED", cutoff).Find(&pendingBookings).Error
+	if err != nil {
+		log.Println("Jobs: Error fetching pending escrow bookings for auto-release:", err)
+		return
+	}
+
+	if len(pendingBookings) == 0 {
+		return
+	}
+
+	now := time.Now()
+	for _, b := range pendingBookings {
+		b.Status = "COMPLETED"
+		b.CompletedAt = &now
+		b.PaymentStatus = "RELEASED_TO_ARTISAN"
+
+		if err := db.Save(&b).Error; err != nil {
+			log.Printf("Jobs: Error auto-releasing booking #%s: %v\n", b.BookingNumber, err)
+		} else {
+			log.Printf("Jobs: Auto-completed booking #%s and released 90%% payout to artisan after 24h\n", b.BookingNumber)
+		}
+	}
 }
 
 func CheckAndSendBulkEmails(db *gorm.DB) {

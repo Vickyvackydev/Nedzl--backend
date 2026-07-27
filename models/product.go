@@ -33,7 +33,7 @@ type Products struct {
 	NewImages         datatypes.JSON `json:"new_images"`
 	University        string         `json:"university"`
 	Status            Status         `json:"status" gorm:"type:varchar(20);default:'ONGOING'"`
-	UserID            uuid.UUID      `json:"user_id" gorm:"type:uuid"`
+	UserID            *uuid.UUID     `json:"user_id" gorm:"type:uuid;default:null"`
 	User              User           `json:"user" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	CreatedAt         time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt         time.Time      `json:"updated_at" gorm:"column:updated_at"`
@@ -43,6 +43,14 @@ type Products struct {
 	Likes             int64          `json:"likes" gorm:"default:0"`
 	IsDeletedByUser   bool           `json:"is_deleted_by_user" gorm:"default:false"`
 	IsNotified        bool           `json:"is_notified" gorm:"default:false"`
+	ProductType       string         `json:"product_type" gorm:"type:varchar(20);default:'MARKET'"` // MARKET, FOOD, SERVICE
+	SubMenus          datatypes.JSON `json:"sub_menus"`
+	DeliveryFee       float64        `json:"delivery_fee" gorm:"default:0"`
+	OldPrice          float64        `json:"old_price" gorm:"default:0"`
+	DiscountPercent   int            `json:"discount_percent" gorm:"default:0"`
+	GuestEmail        string         `json:"guest_email" gorm:"size:255"`
+	GuestPhone        string         `json:"guest_phone" gorm:"size:50"`
+	IsGuestListing    bool           `json:"is_guest_listing" gorm:"default:false"`
 }
 
 type ProductResponse struct {
@@ -60,7 +68,7 @@ type ProductResponse struct {
 	ImageUrls         datatypes.JSON `json:"image_urls"`
 	Status            Status         `json:"status" gorm:"type:varchar(20);default:'UNDER_REVIEW'"`
 	Condition         string         `json:"condition"`
-	UserID            uuid.UUID      `json:"user_id"`
+	UserID            *uuid.UUID     `json:"user_id"`
 	University        string         `json:"university"`
 	BrandName         string         `json:"brand_name"`
 	User              *PublicUser    `json:"user"`
@@ -71,6 +79,14 @@ type ProductResponse struct {
 	Likes             int64          `json:"likes"`
 	IsLikedByMe       bool           `json:"is_liked_by_me"`
 	IsDeletedByUser   bool           `json:"is_deleted_by_user"`
+	ProductType       string         `json:"product_type"`
+	SubMenus          datatypes.JSON `json:"sub_menus"`
+	DeliveryFee       float64        `json:"delivery_fee"`
+	OldPrice          float64        `json:"old_price"`
+	DiscountPercent   int            `json:"discount_percent"`
+	GuestEmail        string         `json:"guest_email"`
+	GuestPhone        string         `json:"guest_phone"`
+	IsGuestListing    bool           `json:"is_guest_listing"`
 }
 type StoreSetting struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
