@@ -1228,6 +1228,22 @@ func CreateGuestProduct(db *gorm.DB) echo.HandlerFunc {
 		}(guestEmail, name, product.ID.String())
 
 		response := ConvertToProductResponse(product, false)
+
+		func(p models.Products) {
+			// 1. Facebook/Instagram Auto Post
+			message := fmt.Sprintf("🛍️ New Product Alert: %s\n\nPrice: ₦%.2f\nCondition: %s\n\nCheck it out on Nedzl!", p.Name, p.ProductPrice, p.Condition)
+			link := fmt.Sprintf("https://nedzl.com/product-details/%s", p.ID.String())
+			igCaption := fmt.Sprintf("%s\n\nLink in bio or copy: %s", message, link)
+			if len(imageUrls) > 0 {
+				imageUrl := imageUrls[0]
+				if err := utils.PostToFacebook(message, imageUrl, link); err != nil {
+					log.Printf("Facebook auto-post failed for product %s: %v", p.ID, err)
+				}
+				if err := utils.PostToInstagram(igCaption, imageUrl); err != nil {
+					log.Printf("Instagram auto-post failed for product %s: %v", p.ID, err)
+				}
+			}
+		}(product)
 		return utils.ResponseSucess(c, http.StatusCreated, "Product listed successfully as guest", echo.Map{"products": response})
 	}
 }
