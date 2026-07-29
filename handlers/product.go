@@ -45,6 +45,14 @@ func ConvertToProductResponse(product models.Products, isLiked bool) models.Prod
 			UpdatedAt:     product.User.UpdatedAt,
 			DeletedAt:     product.User.DeletedAt,
 		}
+	} else if product.IsGuestListing || product.GuestPhone != "" || product.GuestEmail != "" {
+		publicUserPtr = &models.PublicUser{
+			UserName:    "Nedzl Vendor",
+			Email:       product.GuestEmail,
+			PhoneNumber: product.GuestPhone,
+			IsVerified:  false,
+			CreatedAt:   product.CreatedAt,
+		}
 	}
 
 	return models.ProductResponse{
