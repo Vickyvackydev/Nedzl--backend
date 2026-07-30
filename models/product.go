@@ -51,6 +51,7 @@ type Products struct {
 	GuestEmail        string         `json:"guest_email" gorm:"size:255"`
 	GuestPhone        string         `json:"guest_phone" gorm:"size:50"`
 	IsGuestListing    bool           `json:"is_guest_listing" gorm:"default:false"`
+	ServiceType       string         `json:"service_type" gorm:"type:varchar(100);default:''"`
 }
 
 type ProductResponse struct {
@@ -87,6 +88,7 @@ type ProductResponse struct {
 	GuestEmail        string         `json:"guest_email"`
 	GuestPhone        string         `json:"guest_phone"`
 	IsGuestListing    bool           `json:"is_guest_listing"`
+	ServiceType       string         `json:"service_type"`
 }
 type StoreSetting struct {
 	ID                uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`

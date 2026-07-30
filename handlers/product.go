@@ -89,6 +89,7 @@ func ConvertToProductResponse(product models.Products, isLiked bool) models.Prod
 		GuestEmail:        product.GuestEmail,
 		GuestPhone:        product.GuestPhone,
 		IsGuestListing:    product.IsGuestListing,
+		ServiceType:       product.ServiceType,
 	}
 }
 
@@ -113,6 +114,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 		productType := c.FormValue("product_type")
 		subMenusRaw := c.FormValue("sub_menus")
 		deliveryFeeStr := c.FormValue("delivery_fee")
+		serviceType := c.FormValue("service_type")
 
 		if productType == "" {
 			productType = "MARKET"
@@ -218,6 +220,7 @@ func CreateProduct(db *gorm.DB) echo.HandlerFunc {
 			ProductType:       productType,
 			SubMenus:          datatypes.JSON([]byte(subMenusRaw)),
 			DeliveryFee:       deliveryFee,
+			ServiceType:       serviceType,
 		}
 
 		if err := db.Create(&products).Error; err != nil {
@@ -517,6 +520,11 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 		if minPrice != "" && maxPrice != "" {
 			query = query.Where("product_price BETWEEN  ? AND ?", minPrice, maxPrice)
 		}
+		serviceType := c.QueryParam("service_type")
+		if serviceType != "" {
+			query = query.Where("service_type ILIKE ?", "%"+serviceType+"%")
+		}
+
 		if keyword != "" {
 			query = query.Where("product_name ILIKE ? OR description ILIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 		}
@@ -528,10 +536,12 @@ func GetAllProducts(db *gorm.DB) echo.HandlerFunc {
 			startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 			switch section {
-			case "todays_deal":
+			case "todays_deal", "todays-deal":
 				query = query.Where("created_at >= ?", startOfDay)
-			case "for_you":
+			case "for_you", "for-you":
 				query = query.Where("created_at < ?", startOfDay)
+			case "discount_sales", "discount-sales", "discount":
+				query = query.Where("discount_percent > 0 OR (old_price IS NOT NULL AND old_price > product_price)")
 			}
 		}
 
