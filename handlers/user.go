@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -233,14 +234,17 @@ func Me(c echo.Context) error {
 		DeletedAt:     user.DeletedAt,
 	}
 
-	var viewsCount, likesCount, totalListed, totalSold int64
+	var viewsCount, weeklyViewsCount, likesCount, totalListed, totalSold int64
+	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
 	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ?", userID, false).Select("COALESCE(SUM(views), 0)").Scan(&viewsCount)
+	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ? AND updated_at >= ?", userID, false, sevenDaysAgo).Select("COALESCE(SUM(views), 0)").Scan(&weeklyViewsCount)
 	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ?", userID, false).Select("COALESCE(SUM(likes), 0)").Scan(&likesCount)
 	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ?", userID, false).Count(&totalListed)
 	db.DB.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ? AND status = ?", userID, false, models.StatusClosed).Count(&totalSold)
 
 	metrics := echo.Map{
 		"total_views":  viewsCount,
+		"weekly_views": weeklyViewsCount,
 		"total_likes":  likesCount,
 		"total_listed": totalListed,
 		"total_sold":   totalSold,
