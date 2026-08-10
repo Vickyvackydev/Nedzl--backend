@@ -4,6 +4,7 @@ import (
 	"api/emails"
 	"api/models"
 	"api/utils"
+	"api/whatsapp"
 	"fmt"
 	"net/http"
 	"time"
@@ -126,6 +127,16 @@ func CreateServiceBooking(db *gorm.DB) echo.HandlerFunc {
 					req.ServiceAddress,
 					req.ScheduledDate,
 					fee,
+				)
+				
+				_ = whatsapp.SendServiceBookingWhatsApp(
+					service.User.PhoneNumber,
+					bookingNumber,
+					service.Name,
+					customerName,
+					req.CustomerPhone,
+					req.ServiceAddress,
+					req.ScheduledDate.Format("2006-01-02 15:04"),
 				)
 			}
 		}()

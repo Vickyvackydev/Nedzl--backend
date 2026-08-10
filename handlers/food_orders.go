@@ -4,6 +4,7 @@ import (
 	"api/emails"
 	"api/models"
 	"api/utils"
+	"api/whatsapp"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -134,6 +135,16 @@ func CreateFoodOrder(db *gorm.DB) echo.HandlerFunc {
 					req.TotalAmount,
 					product.DeliveryFee,
 				)
+				
+				_ = whatsapp.SendVendorFoodOrderWhatsApp(
+					product.User.PhoneNumber,
+					orderNumber,
+					product.Name,
+					customerName,
+					req.CustomerPhone,
+					req.TotalAmount,
+					req.DeliveryAddress,
+				)
 			}
 		}()
 
@@ -192,6 +203,9 @@ func UpdateFoodOrderStatus(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		order.Status = body.Status
+		if body.Status == "DELIVERED" {
+			order.PaymentStatus = "RELEASED_TO_VENDOR"
+		}
 		if err := db.Save(&order).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update order status", err)
 		}
