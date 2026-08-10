@@ -47,7 +47,7 @@ func ConvertToProductResponse(product models.Products, isLiked bool) models.Prod
 		}
 	} else if product.IsGuestListing || product.GuestPhone != "" || product.GuestEmail != "" {
 		publicUserPtr = &models.PublicUser{
-			UserName:    "Nedzl Vendor",
+			UserName:    "Guest Seller",
 			Email:       product.GuestEmail,
 			PhoneNumber: product.GuestPhone,
 			IsVerified:  false,
