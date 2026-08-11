@@ -116,8 +116,13 @@ func CreateFoodOrder(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to record food order", err)
 		}
 
-		// Send email notification to vendor
+		// Send email & WhatsApp notification to vendor
 		go func() {
+			vendorPhone := product.User.PhoneNumber
+			if vendorPhone == "" {
+				vendorPhone = product.GuestPhone
+			}
+
 			if product.User.Email != "" {
 				submenusStr := "None"
 				if len(req.SubMenus) > 0 {
@@ -135,9 +140,11 @@ func CreateFoodOrder(db *gorm.DB) echo.HandlerFunc {
 					req.TotalAmount,
 					product.DeliveryFee,
 				)
-				
+			}
+
+			if vendorPhone != "" {
 				_ = whatsapp.SendVendorFoodOrderWhatsApp(
-					product.User.PhoneNumber,
+					vendorPhone,
 					orderNumber,
 					product.Name,
 					customerName,

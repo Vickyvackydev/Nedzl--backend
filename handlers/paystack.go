@@ -13,6 +13,7 @@ import (
 	"api/emails"
 	"api/models"
 	"api/utils"
+	"api/whatsapp"
 
 	"github.com/labstack/echo/v4"
 )
@@ -81,21 +82,39 @@ func HandlePaystackWebhook(c echo.Context) error {
 				foodOrder.Status = "PAID"
 				db.DB.Save(&foodOrder)
 
-				// Send Email to Vendor
+				// Send Email & WhatsApp to Vendor
 				go func(order models.FoodOrder) {
 					subMenusStr := string(order.SubMenus)
-					_ = emails.SendVendorFoodOrderEmail(
-						order.Vendor.Email,
-						order.Vendor.UserName,
-						order.OrderNumber,
-						order.Product.Name,
-						order.CustomerName,
-						order.CustomerPhone,
-						order.DeliveryAddress,
-						subMenusStr,
-						order.TotalAmount,
-						order.Product.DeliveryFee,
-					)
+					if order.Vendor.Email != "" {
+						_ = emails.SendVendorFoodOrderEmail(
+							order.Vendor.Email,
+							order.Vendor.UserName,
+							order.OrderNumber,
+							order.Product.Name,
+							order.CustomerName,
+							order.CustomerPhone,
+							order.DeliveryAddress,
+							subMenusStr,
+							order.TotalAmount,
+							order.Product.DeliveryFee,
+						)
+					}
+
+					vendorPhone := order.Vendor.PhoneNumber
+					if vendorPhone == "" {
+						vendorPhone = order.Product.GuestPhone
+					}
+					if vendorPhone != "" {
+						_ = whatsapp.SendVendorFoodOrderWhatsApp(
+							vendorPhone,
+							order.OrderNumber,
+							order.Product.Name,
+							order.CustomerName,
+							order.CustomerPhone,
+							order.TotalAmount,
+							order.DeliveryAddress,
+						)
+					}
 				}(foodOrder)
 			}
 		}
@@ -108,24 +127,42 @@ func HandlePaystackWebhook(c echo.Context) error {
 				serviceBooking.PaymentStatus = "HELD_IN_ESCROW"
 				db.DB.Save(&serviceBooking)
 
-				// Send Email to Artisan
+				// Send Email & WhatsApp to Artisan
 				go func(booking models.ServiceBooking) {
 					customerName := booking.User.UserName
 					if customerName == "" {
 						customerName = "Nedzl Customer"
 					}
 
-					_ = emails.SendArtisanBookingNotificationEmail(
-						booking.Artisan.Email,
-						booking.Artisan.UserName,
-						booking.BookingNumber,
-						booking.Service.Name,
-						customerName,
-						booking.CustomerPhone,
-						booking.ServiceAddress,
-						booking.ScheduledDate,
-						booking.BookingFee,
-					)
+					if booking.Artisan.Email != "" {
+						_ = emails.SendArtisanBookingNotificationEmail(
+							booking.Artisan.Email,
+							booking.Artisan.UserName,
+							booking.BookingNumber,
+							booking.Service.Name,
+							customerName,
+							booking.CustomerPhone,
+							booking.ServiceAddress,
+							booking.ScheduledDate,
+							booking.BookingFee,
+						)
+					}
+
+					artisanPhone := booking.Artisan.PhoneNumber
+					if artisanPhone == "" {
+						artisanPhone = booking.Service.GuestPhone
+					}
+					if artisanPhone != "" {
+						_ = whatsapp.SendServiceBookingWhatsApp(
+							artisanPhone,
+							booking.BookingNumber,
+							booking.Service.Name,
+							customerName,
+							booking.CustomerPhone,
+							booking.ServiceAddress,
+							booking.ScheduledDate.Format("2006-01-02 15:04"),
+						)
+					}
 				}(serviceBooking)
 			}
 		}

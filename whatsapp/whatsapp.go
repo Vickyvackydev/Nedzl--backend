@@ -31,68 +31,82 @@ func sendWhatsAppTemplate(toPhone string, templateName string, parameters []map[
 	token := os.Getenv("WHATSAPP_TOKEN")
 
 	if phoneNumberID == "" || token == "" {
-		fmt.Println("WhatsApp credentials not configured. Skipping WhatsApp notification.")
-		return nil // Skip sending if credentials are not configured, so it doesn't break the app
+		fmt.Println("[WhatsApp] Credentials not configured (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_TOKEN). Skipping notification.")
+		return nil
 	}
 
 	formattedPhone := FormatPhoneNumber(toPhone)
 	if formattedPhone == "" {
+		fmt.Printf("[WhatsApp Error] Cannot send notification: phone number '%s' is empty or invalid.\n", toPhone)
 		return fmt.Errorf("invalid phone number")
 	}
 
 	url := fmt.Sprintf("https://graph.facebook.com/v19.0/%s/messages", phoneNumberID)
 
-	payload := map[string]interface{}{
-		"messaging_product": "whatsapp",
-		"to":                formattedPhone,
-		"type":              "template",
-		"template": map[string]interface{}{
-			"name": templateName,
-			"language": map[string]interface{}{
-				"code": "en",
-			},
-			"components": []map[string]interface{}{
-				{
-					"type":       "body",
-					"parameters": parameters,
+	// Try default language "en", then fallback to "en_US" if needed
+	langCodes := []string{"en", "en_US"}
+	var lastErr error
+
+	for _, lang := range langCodes {
+		payload := map[string]interface{}{
+			"messaging_product": "whatsapp",
+			"to":                formattedPhone,
+			"type":              "template",
+			"template": map[string]interface{}{
+				"name": templateName,
+				"language": map[string]interface{}{
+					"code": lang,
+				},
+				"components": []map[string]interface{}{
+					{
+						"type":       "body",
+						"parameters": parameters,
+					},
 				},
 			},
-		},
-	}
+		}
 
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
+		jsonData, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return err
+		}
 
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			fmt.Printf("[WhatsApp Error] HTTP Request failed for %s: %v\n", formattedPhone, err)
+			continue
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		bodyBytes, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("whatsapp API error: %d, %s", resp.StatusCode, string(bodyBytes))
+
+		if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+			fmt.Printf("[WhatsApp Success] Message sent to %s via template '%s' (lang: %s)\n", formattedPhone, templateName, lang)
+			return nil
+		}
+
+		lastErr = fmt.Errorf("status %d: %s", resp.StatusCode, string(bodyBytes))
+		fmt.Printf("[WhatsApp Warning] Language '%s' failed for template '%s' (%s). Trying next fallback...\n", lang, templateName, string(bodyBytes))
 	}
 
-	return nil
+	fmt.Printf("[WhatsApp Error] All language attempts failed for %s: %v\n", formattedPhone, lastErr)
+	return lastErr
 }
 
 // SendVendorFoodOrderWhatsApp sends an order alert to the food vendor
-// Expected Template Name: vendor_order_alert
-// Expected Variables: {{1}} Order Number, {{2}} Item Name, {{3}} Customer Name, {{4}} Customer Phone, {{5}} Delivery Address, {{6}} Total Amount, {{7}} Link
 func SendVendorFoodOrderWhatsApp(vendorPhone, orderNumber, productName, customerName, customerPhone string, totalAmount float64, deliveryAddress string) error {
 	if vendorPhone == "" {
+		fmt.Println("[WhatsApp Warning] Vendor phone number is empty. Cannot send food order alert.")
 		return nil
 	}
 
@@ -113,13 +127,12 @@ func SendVendorFoodOrderWhatsApp(vendorPhone, orderNumber, productName, customer
 }
 
 // SendServiceBookingWhatsApp sends a booking alert to an artisan
-// Expected Template Name: artisan_booking_alert
-// Expected Variables: {{1}} Booking Number, {{2}} Service Type, {{3}} Customer Name, {{4}} Customer Phone, {{5}} Address, {{6}} Appointment Date, {{7}} Link
 func SendServiceBookingWhatsApp(artisanPhone, bookingNumber, serviceType, customerName, customerPhone, address, appointmentDate string) error {
 	if artisanPhone == "" {
+		fmt.Println("[WhatsApp Warning] Artisan phone number is empty. Cannot send booking alert.")
 		return nil
 	}
-	
+
 	link := "https://nedzl.com/dashboard?tab=bookings"
 
 	parameters := []map[string]interface{}{
