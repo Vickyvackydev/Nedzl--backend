@@ -129,12 +129,18 @@ func CreateServiceBooking(db *gorm.DB) echo.HandlerFunc {
 						req.ScheduledDate,
 						fee,
 					)
-					
+				}
+
+				artisanPhone := service.User.PhoneNumber
+				if artisanPhone == "" {
+					artisanPhone = service.GuestPhone
+				}
+				if artisanPhone != "" {
 					_ = whatsapp.SendServiceBookingWhatsApp(
-						service.User.PhoneNumber,
+						artisanPhone,
 						bookingNumber,
 						service.Name,
-						customerName,
+						customer.UserName,
 						req.CustomerPhone,
 						req.ServiceAddress,
 						req.ScheduledDate.Format("2006-01-02 15:04"),

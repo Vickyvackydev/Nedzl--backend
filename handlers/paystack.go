@@ -80,11 +80,15 @@ func HandlePaystackWebhook(c echo.Context) error {
 		if err := db.DB.Preload("Product").Preload("Vendor").Where("payment_reference = ?", reference).First(&foodOrder).Error; err == nil {
 			if foodOrder.Status != "PAID" {
 				foodOrder.Status = "PAID"
+				foodOrder.PaymentStatus = "SUCCESS"
 				db.DB.Save(&foodOrder)
 
-				// Send Email & WhatsApp to Vendor
+				// Send Email & WhatsApp to Vendor upon successful payment
 				go func(order models.FoodOrder) {
-					subMenusStr := string(order.SubMenus)
+					subMenusStr := "None"
+					if len(order.SubMenus) > 0 {
+						subMenusStr = string(order.SubMenus)
+					}
 					if order.Vendor.Email != "" {
 						_ = emails.SendVendorFoodOrderEmail(
 							order.Vendor.Email,
@@ -127,7 +131,7 @@ func HandlePaystackWebhook(c echo.Context) error {
 				serviceBooking.PaymentStatus = "HELD_IN_ESCROW"
 				db.DB.Save(&serviceBooking)
 
-				// Send Email & WhatsApp to Artisan
+				// Send Email & WhatsApp to Artisan upon successful payment
 				go func(booking models.ServiceBooking) {
 					customerName := booking.User.UserName
 					if customerName == "" {
@@ -172,6 +176,117 @@ func HandlePaystackWebhook(c echo.Context) error {
 		"status":  true,
 		"message": "Webhook processed successfully",
 	})
+}
+
+// VerifyPaystackPayment verifies transaction reference with Paystack API and updates order/booking status
+func VerifyPaystackPayment(c echo.Context) error {
+	reference := c.Param("reference")
+	if reference == "" {
+		reference = c.QueryParam("reference")
+	}
+	if reference == "" {
+		return utils.ResponseError(c, http.StatusBadRequest, "Transaction reference required", nil)
+	}
+
+	verified, msg, err := utils.VerifyPaystackTransaction(reference, 0)
+	if !verified {
+		return utils.ResponseError(c, http.StatusBadRequest, msg, err)
+	}
+
+	// 1. Check FoodOrder
+	var foodOrder models.FoodOrder
+	if err := db.DB.Preload("Product").Preload("Vendor").Where("payment_reference = ?", reference).First(&foodOrder).Error; err == nil {
+		if foodOrder.Status != "PAID" {
+			foodOrder.Status = "PAID"
+			foodOrder.PaymentStatus = "SUCCESS"
+			db.DB.Save(&foodOrder)
+
+			go func(order models.FoodOrder) {
+				subMenusStr := "None"
+				if len(order.SubMenus) > 0 {
+					subMenusStr = string(order.SubMenus)
+				}
+				if order.Vendor.Email != "" {
+					_ = emails.SendVendorFoodOrderEmail(
+						order.Vendor.Email,
+						order.Vendor.UserName,
+						order.OrderNumber,
+						order.Product.Name,
+						order.CustomerName,
+						order.CustomerPhone,
+						order.DeliveryAddress,
+						subMenusStr,
+						order.TotalAmount,
+						order.Product.DeliveryFee,
+					)
+				}
+				vendorPhone := order.Vendor.PhoneNumber
+				if vendorPhone == "" {
+					vendorPhone = order.Product.GuestPhone
+				}
+				if vendorPhone != "" {
+					_ = whatsapp.SendVendorFoodOrderWhatsApp(
+						vendorPhone,
+						order.OrderNumber,
+						order.Product.Name,
+						order.CustomerName,
+						order.CustomerPhone,
+						order.TotalAmount,
+						order.DeliveryAddress,
+					)
+				}
+			}(foodOrder)
+		}
+		return utils.ResponseSucess(c, http.StatusOK, "Payment verified successfully", echo.Map{"order": foodOrder})
+	}
+
+	// 2. Check ServiceBooking
+	var serviceBooking models.ServiceBooking
+	if err := db.DB.Preload("Service").Preload("Artisan").Preload("User").Where("payment_reference = ?", reference).First(&serviceBooking).Error; err == nil {
+		if serviceBooking.Status != "BOOKED" {
+			serviceBooking.Status = "BOOKED"
+			serviceBooking.PaymentStatus = "HELD_IN_ESCROW"
+			db.DB.Save(&serviceBooking)
+
+			go func(booking models.ServiceBooking) {
+				customerName := booking.User.UserName
+				if customerName == "" {
+					customerName = "Nedzl Customer"
+				}
+				if booking.Artisan.Email != "" {
+					_ = emails.SendArtisanBookingNotificationEmail(
+						booking.Artisan.Email,
+						booking.Artisan.UserName,
+						booking.BookingNumber,
+						booking.Service.Name,
+						customerName,
+						booking.CustomerPhone,
+						booking.ServiceAddress,
+						booking.ScheduledDate,
+						booking.BookingFee,
+					)
+				}
+				artisanPhone := booking.Artisan.PhoneNumber
+				if artisanPhone == "" {
+					artisanPhone = booking.Service.GuestPhone
+				}
+				if artisanPhone != "" {
+					_ = whatsapp.SendServiceBookingWhatsApp(
+						artisanPhone,
+						booking.BookingNumber,
+						booking.Service.Name,
+						customerName,
+						booking.CustomerPhone,
+						booking.ServiceAddress,
+						booking.ScheduledDate.Format("2006-01-02 15:04"),
+					)
+				}
+			}(serviceBooking)
+		}
+		return utils.ResponseSucess(c, http.StatusOK, "Payment verified successfully", echo.Map{"booking": serviceBooking})
+	}
+
+	return utils.ResponseSucess(c, http.StatusOK, "Payment verified", nil)
 }
 
 type ResolveBankRequest struct {

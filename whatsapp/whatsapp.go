@@ -26,7 +26,7 @@ func FormatPhoneNumber(phone string) string {
 }
 
 // sendWhatsAppTemplate is a generic helper to send template messages via Meta Cloud API
-func sendWhatsAppTemplate(toPhone string, templateName string, headerTitle string, parameters []map[string]interface{}) error {
+func sendWhatsAppTemplate(toPhone string, templateName string, parameters []map[string]interface{}) error {
 	phoneNumberID := os.Getenv("WHATSAPP_PHONE_NUMBER_ID")
 	token := os.Getenv("WHATSAPP_TOKEN")
 
@@ -43,23 +43,6 @@ func sendWhatsAppTemplate(toPhone string, templateName string, headerTitle strin
 
 	url := fmt.Sprintf("https://graph.facebook.com/v19.0/%s/messages", phoneNumberID)
 
-	components := []map[string]interface{}{}
-	if headerTitle != "" {
-		components = append(components, map[string]interface{}{
-			"type": "header",
-			"parameters": []map[string]interface{}{
-				{
-					"type": "text",
-					"text": headerTitle,
-				},
-			},
-		})
-	}
-	components = append(components, map[string]interface{}{
-		"type":       "body",
-		"parameters": parameters,
-	})
-
 	// Try default language "en", then fallback to "en_US" if needed
 	langCodes := []string{"en", "en_US"}
 	var lastErr error
@@ -74,7 +57,12 @@ func sendWhatsAppTemplate(toPhone string, templateName string, headerTitle strin
 				"language": map[string]interface{}{
 					"code": lang,
 				},
-				"components": components,
+				"components": []map[string]interface{}{
+					{
+						"type":       "body",
+						"parameters": parameters,
+					},
+				},
 			},
 		}
 
@@ -117,6 +105,8 @@ func sendWhatsAppTemplate(toPhone string, templateName string, headerTitle strin
 
 // SendVendorFoodOrderWhatsApp sends an order alert to the food vendor
 func SendVendorFoodOrderWhatsApp(vendorPhone, orderNumber, productName, customerName, customerPhone string, totalAmount float64, deliveryAddress string) error {
+	fmt.Printf("[WhatsApp Trigger] SendVendorFoodOrderWhatsApp invoked for order: %s, vendorPhone: '%s'\n", orderNumber, vendorPhone)
+
 	if vendorPhone == "" {
 		fmt.Println("[WhatsApp Warning] Vendor phone number is empty. Cannot send food order alert.")
 		return nil
@@ -124,10 +114,9 @@ func SendVendorFoodOrderWhatsApp(vendorPhone, orderNumber, productName, customer
 
 	amountStr := fmt.Sprintf("N%.2f", totalAmount)
 	link := "https://nedzl.com/dashboard?tab=orders"
-	title := fmt.Sprintf("Nedzl Meals - Order #%s", orderNumber)
 
 	parameters := []map[string]interface{}{
-		{"type": "text", "text": title},
+		{"type": "text", "text": orderNumber},
 		{"type": "text", "text": productName},
 		{"type": "text", "text": customerName},
 		{"type": "text", "text": customerPhone},
@@ -136,21 +125,22 @@ func SendVendorFoodOrderWhatsApp(vendorPhone, orderNumber, productName, customer
 		{"type": "text", "text": link},
 	}
 
-	return sendWhatsAppTemplate(vendorPhone, "vendor_order_alert", "Nedzl Meals", parameters)
+	return sendWhatsAppTemplate(vendorPhone, "vendor_order_alert", parameters)
 }
 
 // SendServiceBookingWhatsApp sends a booking alert to an artisan
 func SendServiceBookingWhatsApp(artisanPhone, bookingNumber, serviceType, customerName, customerPhone, address, appointmentDate string) error {
+	fmt.Printf("[WhatsApp Trigger] SendServiceBookingWhatsApp invoked for booking: %s, artisanPhone: '%s'\n", bookingNumber, artisanPhone)
+
 	if artisanPhone == "" {
 		fmt.Println("[WhatsApp Warning] Artisan phone number is empty. Cannot send booking alert.")
 		return nil
 	}
 
 	link := "https://nedzl.com/dashboard?tab=bookings"
-	title := fmt.Sprintf("Nedzl Services - Booking #%s", bookingNumber)
 
 	parameters := []map[string]interface{}{
-		{"type": "text", "text": title},
+		{"type": "text", "text": bookingNumber},
 		{"type": "text", "text": serviceType},
 		{"type": "text", "text": customerName},
 		{"type": "text", "text": customerPhone},
@@ -159,5 +149,5 @@ func SendServiceBookingWhatsApp(artisanPhone, bookingNumber, serviceType, custom
 		{"type": "text", "text": link},
 	}
 
-	return sendWhatsAppTemplate(artisanPhone, "artisan_booking_alert", "Nedzl Services", parameters)
+	return sendWhatsAppTemplate(artisanPhone, "artisan_booking_alert", parameters)
 }

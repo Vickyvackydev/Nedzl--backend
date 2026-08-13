@@ -166,8 +166,9 @@ func main() {
 	// Authenticated routes for reviews
 	auth.GET("/reviews/user", handlers.GetCustomerMyReviews(db.DB)) // Get all reviews I (as a customer) have written
 	auth.GET("/reviews/seller", handlers.GetSellerReviews(db.DB))   // Get all reviews on my products (as a seller)
-	// -- PAYSTACK WEBHOOK & BANK RESOLVE ROUTES -->
+	// -- PAYSTACK WEBHOOK, VERIFY & BANK RESOLVE ROUTES -->
 	e.POST("/paystack/webhook", handlers.HandlePaystackWebhook)
+	e.GET("/paystack/verify/:reference", handlers.VerifyPaystackPayment)
 	e.GET("/bank/resolve", handlers.ResolveBank)
 	auth.GET("/bank/resolve", handlers.ResolveBank)
 
