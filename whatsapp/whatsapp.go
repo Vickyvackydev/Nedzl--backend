@@ -26,7 +26,7 @@ func FormatPhoneNumber(phone string) string {
 }
 
 // sendWhatsAppTemplate is a generic helper to send template messages via Meta Cloud API
-func sendWhatsAppTemplate(toPhone string, templateName string, parameters []map[string]interface{}) error {
+func sendWhatsAppTemplate(toPhone string, templateName string, headerTitle string, parameters []map[string]interface{}) error {
 	phoneNumberID := os.Getenv("WHATSAPP_PHONE_NUMBER_ID")
 	token := os.Getenv("WHATSAPP_TOKEN")
 
@@ -43,6 +43,23 @@ func sendWhatsAppTemplate(toPhone string, templateName string, parameters []map[
 
 	url := fmt.Sprintf("https://graph.facebook.com/v19.0/%s/messages", phoneNumberID)
 
+	components := []map[string]interface{}{}
+	if headerTitle != "" {
+		components = append(components, map[string]interface{}{
+			"type": "header",
+			"parameters": []map[string]interface{}{
+				{
+					"type": "text",
+					"text": headerTitle,
+				},
+			},
+		})
+	}
+	components = append(components, map[string]interface{}{
+		"type":       "body",
+		"parameters": parameters,
+	})
+
 	// Try default language "en", then fallback to "en_US" if needed
 	langCodes := []string{"en", "en_US"}
 	var lastErr error
@@ -57,12 +74,7 @@ func sendWhatsAppTemplate(toPhone string, templateName string, parameters []map[
 				"language": map[string]interface{}{
 					"code": lang,
 				},
-				"components": []map[string]interface{}{
-					{
-						"type":       "body",
-						"parameters": parameters,
-					},
-				},
+				"components": components,
 			},
 		}
 
@@ -112,9 +124,10 @@ func SendVendorFoodOrderWhatsApp(vendorPhone, orderNumber, productName, customer
 
 	amountStr := fmt.Sprintf("N%.2f", totalAmount)
 	link := "https://nedzl.com/dashboard?tab=orders"
+	title := fmt.Sprintf("Nedzl Meals - Order #%s", orderNumber)
 
 	parameters := []map[string]interface{}{
-		{"type": "text", "text": orderNumber},
+		{"type": "text", "text": title},
 		{"type": "text", "text": productName},
 		{"type": "text", "text": customerName},
 		{"type": "text", "text": customerPhone},
@@ -123,7 +136,7 @@ func SendVendorFoodOrderWhatsApp(vendorPhone, orderNumber, productName, customer
 		{"type": "text", "text": link},
 	}
 
-	return sendWhatsAppTemplate(vendorPhone, "vendor_order_alert", parameters)
+	return sendWhatsAppTemplate(vendorPhone, "vendor_order_alert", "Nedzl Meals", parameters)
 }
 
 // SendServiceBookingWhatsApp sends a booking alert to an artisan
@@ -134,9 +147,10 @@ func SendServiceBookingWhatsApp(artisanPhone, bookingNumber, serviceType, custom
 	}
 
 	link := "https://nedzl.com/dashboard?tab=bookings"
+	title := fmt.Sprintf("Nedzl Services - Booking #%s", bookingNumber)
 
 	parameters := []map[string]interface{}{
-		{"type": "text", "text": bookingNumber},
+		{"type": "text", "text": title},
 		{"type": "text", "text": serviceType},
 		{"type": "text", "text": customerName},
 		{"type": "text", "text": customerPhone},
@@ -145,5 +159,5 @@ func SendServiceBookingWhatsApp(artisanPhone, bookingNumber, serviceType, custom
 		{"type": "text", "text": link},
 	}
 
-	return sendWhatsAppTemplate(artisanPhone, "artisan_booking_alert", parameters)
+	return sendWhatsAppTemplate(artisanPhone, "artisan_booking_alert", "Nedzl Services", parameters)
 }

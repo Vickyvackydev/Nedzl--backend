@@ -750,14 +750,6 @@ func GetSingleProduct(db *gorm.DB) echo.HandlerFunc {
 		// Increment view count
 		db.Model(&product).Update("views", gorm.Expr("views + ?", 1))
 
-		// Send email if first view and is_notified is false
-		if !product.IsNotified && product.User.Email != "" {
-			db.Model(&product).Update("is_notified", true)
-			go func(email, uName, pName string, pID uuid.UUID) {
-				_ = emails.SendProductViewedMail(email, uName, pName, pID.String())
-			}(product.User.Email, product.User.UserName, product.Name, product.ID)
-		}
-
 		// Check if user has liked this product
 		isLiked := false
 		if userIdVal := c.Get("user_id"); userIdVal != nil {

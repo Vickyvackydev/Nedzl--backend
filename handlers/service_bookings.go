@@ -109,37 +109,39 @@ func CreateServiceBooking(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to create service booking", err)
 		}
 
-		// Notify artisan via email
-		go func() {
-			if service.User.Email != "" {
-				customerName := customer.UserName
-				if customerName == "" {
-					customerName = "Valued Customer"
-				}
+		// Notify artisan via email & WhatsApp ONLY if booking is already confirmed
+		if status == "BOOKED" {
+			go func() {
+				if service.User.Email != "" {
+					customerName := customer.UserName
+					if customerName == "" {
+						customerName = "Valued Customer"
+					}
 
-				_ = emails.SendArtisanBookingNotificationEmail(
-					service.User.Email,
-					service.User.UserName,
-					bookingNumber,
-					service.Name,
-					customerName,
-					req.CustomerPhone,
-					req.ServiceAddress,
-					req.ScheduledDate,
-					fee,
-				)
-				
-				_ = whatsapp.SendServiceBookingWhatsApp(
-					service.User.PhoneNumber,
-					bookingNumber,
-					service.Name,
-					customerName,
-					req.CustomerPhone,
-					req.ServiceAddress,
-					req.ScheduledDate.Format("2006-01-02 15:04"),
-				)
-			}
-		}()
+					_ = emails.SendArtisanBookingNotificationEmail(
+						service.User.Email,
+						service.User.UserName,
+						bookingNumber,
+						service.Name,
+						customerName,
+						req.CustomerPhone,
+						req.ServiceAddress,
+						req.ScheduledDate,
+						fee,
+					)
+					
+					_ = whatsapp.SendServiceBookingWhatsApp(
+						service.User.PhoneNumber,
+						bookingNumber,
+						service.Name,
+						customerName,
+						req.CustomerPhone,
+						req.ServiceAddress,
+						req.ScheduledDate.Format("2006-01-02 15:04"),
+					)
+				}
+			}()
+		}
 
 		return utils.ResponseSucess(c, http.StatusCreated, "Service booking created successfully", echo.Map{
 			"booking":      booking,

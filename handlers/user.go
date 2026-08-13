@@ -303,3 +303,30 @@ func VerifyUser(db *gorm.DB) echo.HandlerFunc {
 		return utils.ResponseSucess(c, http.StatusOK, "User verified successfully", nil)
 	}
 }
+
+func SendWeeklyViewStatsSummary(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var vendors []models.User
+		if err := db.Where("email != ''").Find(&vendors).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to fetch vendors", err)
+		}
+
+		sevenDaysAgo := time.Now().AddDate(0, 0, -7)
+		sentCount := 0
+
+		for _, vendor := range vendors {
+			var viewsCount, weeklyViewsCount int64
+			db.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ?", vendor.ID, false).Select("COALESCE(SUM(views), 0)").Scan(&viewsCount)
+			db.Model(&models.Products{}).Where("user_id = ? AND is_deleted_by_user = ? AND updated_at >= ?", vendor.ID, false, sevenDaysAgo).Select("COALESCE(SUM(views), 0)").Scan(&weeklyViewsCount)
+
+			if weeklyViewsCount > 0 && vendor.Email != "" {
+				go emails.SendWeeklyViewStatsEmail(vendor.Email, vendor.UserName, weeklyViewsCount, viewsCount)
+				sentCount++
+			}
+		}
+
+		return utils.ResponseSucess(c, http.StatusOK, fmt.Sprintf("Weekly view stats summary dispatched to %d vendors", sentCount), echo.Map{
+			"sent_count": sentCount,
+		})
+	}
+}

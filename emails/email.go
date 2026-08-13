@@ -868,12 +868,12 @@ func SendCustomNewsletter(recipients []BulkEmailRecipient, subject, body string)
 	return nil
 }
 
-func SendProductViewedMail(vendorEmail, vendorName, productName string, productID string) error {
+func SendWeeklyViewStatsEmail(vendorEmail, vendorName string, weeklyViews, totalViews int64) error {
 	if Client == nil {
 		return fmt.Errorf("email client not initialized")
 	}
 
-	productLink := fmt.Sprintf("https://nedzl.com/product-details/%s", productID)
+	dashboardLink := "https://nedzl.com/dashboard"
 
 	html := fmt.Sprintf(`
     <!DOCTYPE html>
@@ -894,14 +894,28 @@ func SendProductViewedMail(vendorEmail, vendorName, productName string, productI
     <body>
         <div class="container">
             <div class="header">
-                <h1>NedZl</h1>
+                <h1>NedZl Weekly Insights</h1>
             </div>
             <div class="content">
-                <h2>Good news, %s!</h2>
-                <p>Someone just viewed your listed product: <strong>%s</strong>.</p>
-                <p>Interested buyers are browsing the platform. Keep your store updated and be ready to reply to any inquiries!</p>
+                <h2>Hello %s!</h2>
+                <p>Here is your weekly performance summary for your listed products and services on NedZl.</p>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                    <table width="100%%" border="0" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td align="center" style="padding: 10px;">
+                                <span style="font-size: 26px; font-weight: 800; color: #07B463; display: block;">%d</span>
+                                <span style="font-size: 12px; color: #4b5563; font-weight: 600; text-transform: uppercase;">Views This Week</span>
+                            </td>
+                            <td align="center" style="padding: 10px;">
+                                <span style="font-size: 26px; font-weight: 800; color: #07B463; display: block;">%d</span>
+                                <span style="font-size: 12px; color: #4b5563; font-weight: 600; text-transform: uppercase;">All-Time Store Views</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <p>Interested buyers are browsing the platform! Keep your listings updated and respond promptly to potential customer inquiries.</p>
                 <div style="text-align: center; margin: 25px 0;">
-                    <a href="%s" class="btn">View Your Product</a>
+                    <a href="%s" class="btn">View Vendor Dashboard</a>
                 </div>
                 <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
             </div>
@@ -910,17 +924,21 @@ func SendProductViewedMail(vendorEmail, vendorName, productName string, productI
             </div>
         </div>
     </body>
-    </html>`, vendorName, productName, productLink, time.Now().Year())
+    </html>`, vendorName, weeklyViews, totalViews, dashboardLink, time.Now().Year())
 
 	params := &resend.SendEmailRequest{
 		From:    "noreply@nedzl.com",
 		To:      []string{vendorEmail},
 		Html:    html,
-		Subject: fmt.Sprintf("👀 Someone viewed your product: %s", productName),
+		Subject: fmt.Sprintf("📊 Your Weekly Store Performance Summary - %d Views This Week", weeklyViews),
 	}
 
 	_, err := Client.Emails.Send(params)
 	return err
+}
+
+func SendProductViewedMail(vendorEmail, vendorName, productName string, productID string) error {
+	return SendWeeklyViewStatsEmail(vendorEmail, vendorName, 1, 1)
 }
 
 func SendSearchAlertNotificationMail(to, keyword, category, productName, productID string) error {

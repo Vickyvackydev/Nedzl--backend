@@ -116,44 +116,46 @@ func CreateFoodOrder(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to record food order", err)
 		}
 
-		// Send email & WhatsApp notification to vendor
-		go func() {
-			vendorPhone := product.User.PhoneNumber
-			if vendorPhone == "" {
-				vendorPhone = product.GuestPhone
-			}
-
-			if product.User.Email != "" {
-				submenusStr := "None"
-				if len(req.SubMenus) > 0 {
-					submenusStr = string(req.SubMenus)
+		// Send email & WhatsApp notification to vendor ONLY if payment is already confirmed
+		if status == "PAID" {
+			go func() {
+				vendorPhone := product.User.PhoneNumber
+				if vendorPhone == "" {
+					vendorPhone = product.GuestPhone
 				}
-				_ = emails.SendVendorFoodOrderEmail(
-					product.User.Email,
-					product.User.UserName,
-					orderNumber,
-					product.Name,
-					customerName,
-					req.CustomerPhone,
-					req.DeliveryAddress,
-					submenusStr,
-					req.TotalAmount,
-					product.DeliveryFee,
-				)
-			}
 
-			if vendorPhone != "" {
-				_ = whatsapp.SendVendorFoodOrderWhatsApp(
-					vendorPhone,
-					orderNumber,
-					product.Name,
-					customerName,
-					req.CustomerPhone,
-					req.TotalAmount,
-					req.DeliveryAddress,
-				)
-			}
-		}()
+				if product.User.Email != "" {
+					submenusStr := "None"
+					if len(req.SubMenus) > 0 {
+						submenusStr = string(req.SubMenus)
+					}
+					_ = emails.SendVendorFoodOrderEmail(
+						product.User.Email,
+						product.User.UserName,
+						orderNumber,
+						product.Name,
+						customerName,
+						req.CustomerPhone,
+						req.DeliveryAddress,
+						submenusStr,
+						req.TotalAmount,
+						product.DeliveryFee,
+					)
+				}
+
+				if vendorPhone != "" {
+					_ = whatsapp.SendVendorFoodOrderWhatsApp(
+						vendorPhone,
+						orderNumber,
+						product.Name,
+						customerName,
+						req.CustomerPhone,
+						req.TotalAmount,
+						req.DeliveryAddress,
+					)
+				}
+			}()
+		}
 
 		return utils.ResponseSucess(c, http.StatusCreated, "Food order placed successfully", echo.Map{
 			"order":        order,
