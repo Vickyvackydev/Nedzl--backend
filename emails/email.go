@@ -616,6 +616,69 @@ func SendPasswordResetMail(to, username, token string, expiryTime time.Time) err
 	return err
 }
 
+func SendAccountSuspendedMail(to, username, token string, expiryTime time.Time) error {
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
+	}
+
+	resetLink := fmt.Sprintf(`https://nedzl.com/auth/reset-password?token=%s&email=%s`, token, to)
+	expiryFormatted := expiryTime.Format("3:04 PM MST")
+
+	html := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #e53e3e; padding: 40px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; }
+            .content { padding: 40px; color: #333333; line-height: 1.6; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; }
+            .alert-notice { background: #fed7d7; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 20px 0; border-radius: 4px; color: #9b2c2c; font-size: 14px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Security Alert: Account Suspended</h1>
+            </div>
+            <div class="content">
+                <h2>Hello %s,</h2>
+                <div class="alert-notice">
+                    <strong>⚠️ Security Notice:</strong> Your NedZl account has been temporarily suspended due to 5 consecutive failed login attempts.
+                </div>
+                <p>To protect your account from unauthorized access, we have suspended login access. You can safely recover and reactivate your account by setting a new password using the button below:</p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="%s" class="btn">Recover My Account</a>
+                </div>
+
+                <p>This recovery link will expire at <strong>%s</strong>.</p>
+                <p style="word-break: break-all; color: #07B463; font-size: 14px;">%s</p>
+
+                <p style="margin-top: 30px;">Best regards,<br>The NedZl Security Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, username, resetLink, expiryFormatted, resetLink, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "security@nedzl.com",
+		To:      []string{to},
+		Html:    html,
+		Subject: "Account Suspended: Recover Your NedZl Account",
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
 func SendPasswordResetSuccessMail(to, username string) error {
 	if Client == nil {
 		return fmt.Errorf("email client not initialized")

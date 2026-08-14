@@ -238,12 +238,14 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		// check if user email exist in database
-
 		var user models.User
+		if err := db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid login credentials", err)
+		}
 
-		if err := db.Where("email =?", req.Email).First(&user).Error; err != nil {
-			// c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
-			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid login credential", err)
+		// check if account is suspended
+		if user.Status == models.UserSuspended {
+			return utils.ResponseError(c, http.StatusForbidden, "Your account has been suspended due to multiple failed login attempts. Please check your email for recovery instructions or reset your password.", nil)
 		}
 
 		// checks if email is verified
@@ -253,8 +255,32 @@ func Login(db *gorm.DB) echo.HandlerFunc {
 
 		// check if password matches existing one in database
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-			// return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid login credentials"})
-			return utils.ResponseError(c, http.StatusUnauthorized, "Invalid login credentials", err)
+			user.FailedLoginAttempts += 1
+			
+			if user.FailedLoginAttempts >= 5 {
+				user.Status = models.UserSuspended
+				_, token := generateVerificationToken()
+				expiryTime := time.Now().Add(15 * time.Minute)
+				user.PasswordResetToken = token
+				user.PasswordResetTokenExpiry = &expiryTime
+				
+				_ = db.Save(&user).Error
+				
+				// Send account recovery email asynchronously
+				go emails.SendAccountSuspendedMail(user.Email, user.UserName, token, expiryTime)
+
+				return utils.ResponseError(c, http.StatusForbidden, "Account suspended due to 5 failed login attempts. Recovery instructions have been sent to your email.", nil)
+			}
+			
+			_ = db.Save(&user).Error
+			remainingAttempts := 5 - user.FailedLoginAttempts
+			return utils.ResponseError(c, http.StatusUnauthorized, fmt.Sprintf("Invalid login credentials. %d attempt(s) remaining before account suspension.", remainingAttempts), err)
+		}
+
+		// On successful login, reset failed attempts counter if > 0
+		if user.FailedLoginAttempts > 0 {
+			user.FailedLoginAttempts = 0
+			_ = db.Save(&user).Error
 		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -405,8 +431,11 @@ func ResetPassword(db *gorm.DB) echo.HandlerFunc {
 
 		user.Password = string(hashedPassword)
 		user.PasswordResetToken = ""
-
 		user.PasswordResetTokenExpiry = nil
+		user.FailedLoginAttempts = 0
+		if user.Status == models.UserSuspended {
+			user.Status = models.UserActive
+		}
 
 		if err := db.Save(&user).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to reset password", err)

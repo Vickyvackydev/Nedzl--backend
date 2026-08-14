@@ -59,6 +59,7 @@ type User struct {
 	EmailToken               string     `gorm:"size:255" json:"-"`
 	EmailTokenExpiry         *time.Time `json:"-"`
 	Status                   Status     `json:"status" gorm:"type:varchar(20);default:'ACTIVE'"`
+	FailedLoginAttempts      int        `gorm:"default:0" json:"-"`
 	PasswordResetToken       string     `gorm:"size:255" json:"-"`
 	PasswordResetTokenExpiry *time.Time `json:"-"`
 	StudentIDCard            string         `json:"student_id_card"`
