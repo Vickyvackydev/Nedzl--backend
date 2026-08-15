@@ -80,7 +80,7 @@ func HandlePaystackWebhook(c echo.Context) error {
 		if err := db.DB.Preload("Product").Preload("Vendor").Where("payment_reference = ?", reference).First(&foodOrder).Error; err == nil {
 			if foodOrder.Status != "PAID" {
 				foodOrder.Status = "PAID"
-				foodOrder.PaymentStatus = "SUCCESS"
+				foodOrder.PaymentStatus = "HELD_IN_ESCROW"
 				db.DB.Save(&foodOrder)
 
 				// Send Email & WhatsApp to Vendor upon successful payment
@@ -198,7 +198,7 @@ func VerifyPaystackPayment(c echo.Context) error {
 	if err := db.DB.Preload("Product").Preload("Vendor").Where("payment_reference = ?", reference).First(&foodOrder).Error; err == nil {
 		if foodOrder.Status != "PAID" {
 			foodOrder.Status = "PAID"
-			foodOrder.PaymentStatus = "SUCCESS"
+			foodOrder.PaymentStatus = "HELD_IN_ESCROW"
 			db.DB.Save(&foodOrder)
 
 			go func(order models.FoodOrder) {

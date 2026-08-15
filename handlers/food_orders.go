@@ -212,15 +212,56 @@ func UpdateFoodOrderStatus(db *gorm.DB) echo.HandlerFunc {
 		}
 
 		order.Status = body.Status
-		if body.Status == "DELIVERED" {
-			order.PaymentStatus = "RELEASED_TO_VENDOR"
+		if body.Status == "DELIVERED" || body.Status == "DELIVERED_BY_VENDOR" {
+			order.Status = "DELIVERED_BY_VENDOR"
+			now := time.Now()
+			order.VendorDeliveredAt = &now
+			// PaymentStatus remains HELD_IN_ESCROW until customer confirms receipt
+			if order.PaymentStatus == "" {
+				order.PaymentStatus = "HELD_IN_ESCROW"
+			}
 		}
+
 		if err := db.Save(&order).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update order status", err)
 		}
 
 		return c.JSON(http.StatusOK, echo.Map{
 			"message": "Order status updated",
+			"order":   order,
+		})
+	}
+}
+
+// ConfirmFoodOrderDelivery allows the customer to confirm they received their food order and release payment to the vendor
+func ConfirmFoodOrderDelivery(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userID := c.Get("user_id").(uuid.UUID)
+		orderID := c.Param("id")
+
+		var order models.FoodOrder
+		if err := db.First(&order, "id = ? AND user_id = ?", orderID, userID).Error; err != nil {
+			return utils.ResponseError(c, http.StatusNotFound, "Food order not found", err)
+		}
+
+		if order.Status == "COMPLETED" && order.PaymentStatus == "RELEASED_TO_VENDOR" {
+			return c.JSON(http.StatusOK, echo.Map{
+				"message": "Order delivery already confirmed",
+				"order":   order,
+			})
+		}
+
+		now := time.Now()
+		order.Status = "COMPLETED"
+		order.PaymentStatus = "RELEASED_TO_VENDOR"
+		order.CustomerConfirmedAt = &now
+
+		if err := db.Save(&order).Error; err != nil {
+			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to confirm food order delivery", err)
+		}
+
+		return c.JSON(http.StatusOK, echo.Map{
+			"message": "Food delivery confirmed successfully! Funds released to vendor.",
 			"order":   order,
 		})
 	}

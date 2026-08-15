@@ -107,6 +107,7 @@ func main() {
 	auth.GET("/food-orders/user", handlers.GetUserFoodOrders(db.DB))
 	auth.GET("/food-orders/vendor", handlers.GetVendorFoodOrders(db.DB))
 	auth.PATCH("/food-orders/:id/status", handlers.UpdateFoodOrderStatus(db.DB))
+	auth.POST("/food-orders/:id/confirm-delivery", handlers.ConfirmFoodOrderDelivery(db.DB))
 
 	// -- SERVICE BOOKINGS ROUTES -- >
 	auth.POST("/service-bookings", handlers.CreateServiceBooking(db.DB))

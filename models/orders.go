@@ -27,11 +27,14 @@ type FoodOrder struct {
 	CustomerPhone    string         `json:"customer_phone"`
 	DeliveryAddress  string         `json:"delivery_address"`
 	PaymentReference string         `gorm:"type:varchar(100)" json:"payment_reference"`
-	Status           string         `gorm:"type:varchar(30);default:'PAID'" json:"status"` // PAID, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
-	PaymentStatus    string         `gorm:"type:varchar(30);default:'SUCCESS'" json:"payment_status"`
-	CreatedAt        time.Time      `json:"created_at"`
-	UpdatedAt        time.Time      `json:"updated_at"`
-	DeletedAt        gorm.DeletedAt `json:"-" gorm:"index"`
+	Status              string         `gorm:"type:varchar(30);default:'PAID'" json:"status"` // PAID, PREPARING, OUT_FOR_DELIVERY, DELIVERED_BY_VENDOR, COMPLETED, CANCELLED
+	VendorDeliveredAt   *time.Time     `json:"vendor_delivered_at"`
+	CustomerConfirmedAt *time.Time     `json:"customer_confirmed_at"`
+	DeliveryPIN         string         `gorm:"type:varchar(10)" json:"delivery_pin"`
+	PaymentStatus       string         `gorm:"type:varchar(30);default:'HELD_IN_ESCROW'" json:"payment_status"` // HELD_IN_ESCROW, RELEASED_TO_VENDOR, REFUNDED
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+	DeletedAt           gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type ServiceBooking struct {
