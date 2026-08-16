@@ -142,9 +142,9 @@ func ProcessPendingUnpaidEscrowTransfers(db *gorm.DB) {
 
 					code, err := InitiatePaystackTransfer(bankCode, accNum, accName, ord.VendorPayout, transferRef, reason)
 					if err != nil {
-						log.Printf("Jobs: Automated Paystack Transfer failed for food order #%s: %v\n", ord.OrderNumber, err)
+						log.Printf("Jobs: Paystack Transfer failed for food order #%s: %v\n", ord.OrderNumber, err)
 					} else {
-						log.Printf("Jobs: Automated Paystack Transfer initiated for food order #%s (%s): ₦%.2f to %s (%s)\n", ord.OrderNumber, code, ord.VendorPayout, accNum, bankName)
+						log.Printf("Jobs: Paystack Transfer initiated for food order #%s (%s): ₦%.2f to %s (%s)\n", ord.OrderNumber, code, ord.VendorPayout, accNum, bankName)
 						payoutTime := time.Now()
 						db.Model(&models.FoodOrder{}).Where("id = ?", ord.ID).Updates(map[string]interface{}{
 							"payout_transfer_ref":   transferRef,
@@ -192,9 +192,9 @@ func ProcessPendingUnpaidEscrowTransfers(db *gorm.DB) {
 
 					code, err := InitiatePaystackTransfer(bankCode, accNum, accName, bk.ArtisanPayout, transferRef, reason)
 					if err != nil {
-						log.Printf("Jobs: Automated Paystack Transfer failed for service booking #%s: %v\n", bk.BookingNumber, err)
+						log.Printf("Jobs: Paystack Transfer failed for service booking #%s: %v\n", bk.BookingNumber, err)
 					} else {
-						log.Printf("Jobs: Automated Paystack Transfer initiated for service booking #%s (%s): ₦%.2f to %s (%s)\n", bk.BookingNumber, code, bk.ArtisanPayout, accNum, bankName)
+						log.Printf("Jobs: Paystack Transfer initiated for service booking #%s (%s): ₦%.2f to %s (%s)\n", bk.BookingNumber, code, bk.ArtisanPayout, accNum, bankName)
 						payoutTime := time.Now()
 						db.Model(&models.ServiceBooking{}).Where("id = ?", bk.ID).Updates(map[string]interface{}{
 							"payout_transfer_ref":   transferRef,
