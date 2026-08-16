@@ -30,6 +30,7 @@ func StartJobs(db *gorm.DB) {
 	go func() {
 		log.Println("Jobs: Starting Escrow Auto-Release background worker...")
 		AutoReleaseEscrowBookings(db)
+		AutoReleaseEscrowFoodOrders(db)
 
 		// Check every 15 minutes
 		ticker := time.NewTicker(15 * time.Minute)
@@ -38,6 +39,7 @@ func StartJobs(db *gorm.DB) {
 		for {
 			<-ticker.C
 			AutoReleaseEscrowBookings(db)
+			AutoReleaseEscrowFoodOrders(db)
 		}
 	}()
 }
@@ -66,6 +68,36 @@ func AutoReleaseEscrowBookings(db *gorm.DB) {
 			log.Printf("Jobs: Error auto-releasing booking #%s: %v\n", b.BookingNumber, err)
 		} else {
 			log.Printf("Jobs: Auto-completed booking #%s and released 90%% payout to artisan after 24h\n", b.BookingNumber)
+		}
+	}
+}
+
+func AutoReleaseEscrowFoodOrders(db *gorm.DB) {
+	cutoff := time.Now().Add(-24 * time.Hour)
+	var pendingOrders []models.FoodOrder
+
+	err := db.Where("(status = ? OR status = ?) AND vendor_delivered_at <= ?", "DELIVERED", "DELIVERED_BY_VENDOR", cutoff).Find(&pendingOrders).Error
+	if err != nil {
+		log.Println("Jobs: Error fetching pending food orders for auto-release:", err)
+		return
+	}
+
+	if len(pendingOrders) == 0 {
+		return
+	}
+
+	now := time.Now()
+	for _, o := range pendingOrders {
+		o.Status = "COMPLETED"
+		o.PaymentStatus = "RELEASED_TO_VENDOR"
+		if o.CustomerConfirmedAt == nil {
+			o.CustomerConfirmedAt = &now
+		}
+
+		if err := db.Save(&o).Error; err != nil {
+			log.Printf("Jobs: Error auto-releasing food order #%s: %v\n", o.OrderNumber, err)
+		} else {
+			log.Printf("Jobs: Auto-completed food order #%s and released payout to vendor after 24h\n", o.OrderNumber)
 		}
 	}
 }
