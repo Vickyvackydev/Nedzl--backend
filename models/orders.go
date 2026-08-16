@@ -32,6 +32,8 @@ type FoodOrder struct {
 	CustomerConfirmedAt *time.Time     `json:"customer_confirmed_at"`
 	DeliveryPIN         string         `gorm:"type:varchar(10)" json:"delivery_pin"`
 	PaymentStatus       string         `gorm:"type:varchar(30);default:'HELD_IN_ESCROW'" json:"payment_status"` // HELD_IN_ESCROW, RELEASED_TO_VENDOR, REFUNDED
+	PayoutTransferRef   string         `gorm:"type:varchar(100)" json:"payout_transfer_ref"`
+	PayoutTransferredAt *time.Time     `json:"payout_transferred_at"`
 	CreatedAt           time.Time      `json:"created_at"`
 	UpdatedAt           time.Time      `json:"updated_at"`
 	DeletedAt           gorm.DeletedAt `json:"-" gorm:"index"`
@@ -58,6 +60,8 @@ type ServiceBooking struct {
 	ArtisanCompletedAt *time.Time     `json:"artisan_completed_at"`
 	CompletedAt        *time.Time     `json:"completed_at"`
 	PaymentStatus      string         `gorm:"type:varchar(30);default:'HELD_IN_ESCROW'" json:"payment_status"` // HELD_IN_ESCROW, RELEASED_TO_ARTISAN, REFUNDED
+	PayoutTransferRef   string         `gorm:"type:varchar(100)" json:"payout_transfer_ref"`
+	PayoutTransferredAt *time.Time     `json:"payout_transferred_at"`
 	CreatedAt          time.Time      `json:"created_at"`
 	UpdatedAt          time.Time      `json:"updated_at"`
 	DeletedAt          gorm.DeletedAt `json:"-" gorm:"index"`

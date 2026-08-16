@@ -28,9 +28,10 @@ func StartJobs(db *gorm.DB) {
 	}()
 
 	go func() {
-		log.Println("Jobs: Starting Escrow Auto-Release background worker...")
+		log.Println("Jobs: Starting Escrow Auto-Release & Payout background worker...")
 		AutoReleaseEscrowBookings(db)
 		AutoReleaseEscrowFoodOrders(db)
+		ProcessPendingUnpaidEscrowTransfers(db)
 
 		// Check every 15 minutes
 		ticker := time.NewTicker(15 * time.Minute)
@@ -40,6 +41,7 @@ func StartJobs(db *gorm.DB) {
 			<-ticker.C
 			AutoReleaseEscrowBookings(db)
 			AutoReleaseEscrowFoodOrders(db)
+			ProcessPendingUnpaidEscrowTransfers(db)
 		}
 	}()
 }
@@ -67,7 +69,7 @@ func AutoReleaseEscrowBookings(db *gorm.DB) {
 		if err := db.Save(&b).Error; err != nil {
 			log.Printf("Jobs: Error auto-releasing booking #%s: %v\n", b.BookingNumber, err)
 		} else {
-			log.Printf("Jobs: Auto-completed booking #%s and released 90%% payout to artisan after 24h\n", b.BookingNumber)
+			log.Printf("Jobs: Auto-completed booking #%s and released 90%% payout status to artisan after 24h\n", b.BookingNumber)
 		}
 	}
 }
@@ -97,7 +99,110 @@ func AutoReleaseEscrowFoodOrders(db *gorm.DB) {
 		if err := db.Save(&o).Error; err != nil {
 			log.Printf("Jobs: Error auto-releasing food order #%s: %v\n", o.OrderNumber, err)
 		} else {
-			log.Printf("Jobs: Auto-completed food order #%s and released payout to vendor after 24h\n", o.OrderNumber)
+			log.Printf("Jobs: Auto-completed food order #%s and released payout status to vendor after 24h\n", o.OrderNumber)
+		}
+	}
+}
+
+// ProcessPendingUnpaidEscrowTransfers scans for completed orders/bookings whose Paystack transfers haven't been initiated yet and executes them automatically
+func ProcessPendingUnpaidEscrowTransfers(db *gorm.DB) {
+	// 1. Process Food Orders
+	var pendingFoodOrders []models.FoodOrder
+	if err := db.Where("(status = ? OR payment_status = ?) AND (payout_transfer_ref IS NULL OR payout_transfer_ref = '')", "COMPLETED", "RELEASED_TO_VENDOR").Find(&pendingFoodOrders).Error; err == nil {
+		for _, ord := range pendingFoodOrders {
+			var vendor models.User
+			if err := db.First(&vendor, "id = ?", ord.VendorID).Error; err == nil {
+				accNum := vendor.AccountNumber
+				bankName := vendor.BankName
+				accName := vendor.AccountName
+
+				if (accNum == "" || bankName == "") && len(vendor.BankAccounts) > 0 {
+					var accounts []models.BankAccountItem
+					if err := json.Unmarshal(vendor.BankAccounts, &accounts); err == nil {
+						for _, acc := range accounts {
+							if acc.IsDefault || accNum == "" {
+								accNum = acc.AccountNumber
+								bankName = acc.BankName
+								accName = acc.AccountName
+								if acc.IsDefault {
+									break
+								}
+							}
+						}
+					}
+				}
+
+				if accNum != "" && bankName != "" {
+					if accName == "" {
+						accName = vendor.UserName
+					}
+					bankCode := GetBankCodeByName(bankName)
+					transferRef := fmt.Sprintf("TRF-%s-%d", ord.OrderNumber, time.Now().Unix())
+					reason := fmt.Sprintf("Nedzl Food Order #%s Payout", ord.OrderNumber)
+
+					code, err := InitiatePaystackTransfer(bankCode, accNum, accName, ord.VendorPayout, transferRef, reason)
+					if err != nil {
+						log.Printf("Jobs: Automated Paystack Transfer failed for food order #%s: %v\n", ord.OrderNumber, err)
+					} else {
+						log.Printf("Jobs: Automated Paystack Transfer initiated for food order #%s (%s): ₦%.2f to %s (%s)\n", ord.OrderNumber, code, ord.VendorPayout, accNum, bankName)
+						payoutTime := time.Now()
+						db.Model(&models.FoodOrder{}).Where("id = ?", ord.ID).Updates(map[string]interface{}{
+							"payout_transfer_ref":   transferRef,
+							"payout_transferred_at": payoutTime,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Process Service Bookings
+	var pendingBookings []models.ServiceBooking
+	if err := db.Where("(status = ? OR payment_status = ?) AND (payout_transfer_ref IS NULL OR payout_transfer_ref = '')", "COMPLETED", "RELEASED_TO_ARTISAN").Find(&pendingBookings).Error; err == nil {
+		for _, bk := range pendingBookings {
+			var artisan models.User
+			if err := db.First(&artisan, "id = ?", bk.ArtisanID).Error; err == nil {
+				accNum := artisan.AccountNumber
+				bankName := artisan.BankName
+				accName := artisan.AccountName
+
+				if (accNum == "" || bankName == "") && len(artisan.BankAccounts) > 0 {
+					var accounts []models.BankAccountItem
+					if err := json.Unmarshal(artisan.BankAccounts, &accounts); err == nil {
+						for _, acc := range accounts {
+							if acc.IsDefault || accNum == "" {
+								accNum = acc.AccountNumber
+								bankName = acc.BankName
+								accName = acc.AccountName
+								if acc.IsDefault {
+									break
+								}
+							}
+						}
+					}
+				}
+
+				if accNum != "" && bankName != "" {
+					if accName == "" {
+						accName = artisan.UserName
+					}
+					bankCode := GetBankCodeByName(bankName)
+					transferRef := fmt.Sprintf("TRF-%s-%d", bk.BookingNumber, time.Now().Unix())
+					reason := fmt.Sprintf("Nedzl Service Booking #%s Payout", bk.BookingNumber)
+
+					code, err := InitiatePaystackTransfer(bankCode, accNum, accName, bk.ArtisanPayout, transferRef, reason)
+					if err != nil {
+						log.Printf("Jobs: Automated Paystack Transfer failed for service booking #%s: %v\n", bk.BookingNumber, err)
+					} else {
+						log.Printf("Jobs: Automated Paystack Transfer initiated for service booking #%s (%s): ₦%.2f to %s (%s)\n", bk.BookingNumber, code, bk.ArtisanPayout, accNum, bankName)
+						payoutTime := time.Now()
+						db.Model(&models.ServiceBooking{}).Where("id = ?", bk.ID).Updates(map[string]interface{}{
+							"payout_transfer_ref":   transferRef,
+							"payout_transferred_at": payoutTime,
+						})
+					}
+				}
+			}
 		}
 	}
 }

@@ -5,7 +5,9 @@ import (
 	"api/models"
 	"api/utils"
 	"api/whatsapp"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -263,6 +265,53 @@ func CustomerCompleteBooking(db *gorm.DB) echo.HandlerFunc {
 		if err := db.Save(&booking).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to release escrow payout", err)
 		}
+
+		// Asynchronously initiate Paystack bank transfer payout to artisan if bank details exist
+		go func(bk models.ServiceBooking) {
+			var artisan models.User
+			if err := db.First(&artisan, "id = ?", bk.ArtisanID).Error; err == nil {
+				accNum := artisan.AccountNumber
+				bankName := artisan.BankName
+				accName := artisan.AccountName
+
+				if (accNum == "" || bankName == "") && len(artisan.BankAccounts) > 0 {
+					var accounts []models.BankAccountItem
+					if err := json.Unmarshal(artisan.BankAccounts, &accounts); err == nil {
+						for _, acc := range accounts {
+							if acc.IsDefault || accNum == "" {
+								accNum = acc.AccountNumber
+								bankName = acc.BankName
+								accName = acc.AccountName
+								if acc.IsDefault {
+									break
+								}
+							}
+						}
+					}
+				}
+
+				if accNum != "" && bankName != "" {
+					if accName == "" {
+						accName = artisan.UserName
+					}
+					bankCode := utils.GetBankCodeByName(bankName)
+					transferRef := fmt.Sprintf("TRF-%s-%d", bk.BookingNumber, time.Now().Unix())
+					reason := fmt.Sprintf("Nedzl Service Booking #%s Payout", bk.BookingNumber)
+
+					code, err := utils.InitiatePaystackTransfer(bankCode, accNum, accName, bk.ArtisanPayout, transferRef, reason)
+					if err != nil {
+						log.Printf("Paystack Transfer failed for booking #%s: %v\n", bk.BookingNumber, err)
+					} else {
+						log.Printf("Paystack Transfer initiated successfully for booking #%s (%s): ₦%.2f to %s (%s)\n", bk.BookingNumber, code, bk.ArtisanPayout, accNum, bankName)
+						payoutTime := time.Now()
+						db.Model(&models.ServiceBooking{}).Where("id = ?", bk.ID).Updates(map[string]interface{}{
+							"payout_transfer_ref":   transferRef,
+							"payout_transferred_at": payoutTime,
+						})
+					}
+				}
+			}
+		}(booking)
 
 		return c.JSON(http.StatusOK, echo.Map{
 			"message": "Service completed successfully! Payout released to artisan.",

@@ -177,6 +177,10 @@ func UpdateUser(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update user", err)
 		}
 
+		if bankName != "" || accountNumber != "" || bankAccounts != "" {
+			go utils.ProcessPendingUnpaidEscrowTransfers(db)
+		}
+
 		response := models.PublicUser{
 			ID:            user.ID,
 			UserName:      user.UserName,

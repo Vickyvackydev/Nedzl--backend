@@ -7,6 +7,7 @@ import (
 	"api/whatsapp"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -300,6 +301,53 @@ func ConfirmFoodOrderDelivery(db *gorm.DB) echo.HandlerFunc {
 		if err := db.Save(&order).Error; err != nil {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to confirm food order delivery", err)
 		}
+
+		// Asynchronously initiate Paystack bank transfer payout to vendor if bank details exist
+		go func(ord models.FoodOrder) {
+			var vendor models.User
+			if err := db.First(&vendor, "id = ?", ord.VendorID).Error; err == nil {
+				accNum := vendor.AccountNumber
+				bankName := vendor.BankName
+				accName := vendor.AccountName
+
+				if (accNum == "" || bankName == "") && len(vendor.BankAccounts) > 0 {
+					var accounts []models.BankAccountItem
+					if err := json.Unmarshal(vendor.BankAccounts, &accounts); err == nil {
+						for _, acc := range accounts {
+							if acc.IsDefault || accNum == "" {
+								accNum = acc.AccountNumber
+								bankName = acc.BankName
+								accName = acc.AccountName
+								if acc.IsDefault {
+									break
+								}
+							}
+						}
+					}
+				}
+
+				if accNum != "" && bankName != "" {
+					if accName == "" {
+						accName = vendor.UserName
+					}
+					bankCode := utils.GetBankCodeByName(bankName)
+					transferRef := fmt.Sprintf("TRF-%s-%d", ord.OrderNumber, time.Now().Unix())
+					reason := fmt.Sprintf("Nedzl Food Order #%s Payout", ord.OrderNumber)
+
+					code, err := utils.InitiatePaystackTransfer(bankCode, accNum, accName, ord.VendorPayout, transferRef, reason)
+					if err != nil {
+						log.Printf("Paystack Transfer failed for order #%s: %v\n", ord.OrderNumber, err)
+					} else {
+						log.Printf("Paystack Transfer initiated successfully for order #%s (%s): ₦%.2f to %s (%s)\n", ord.OrderNumber, code, ord.VendorPayout, accNum, bankName)
+						payoutTime := time.Now()
+						db.Model(&models.FoodOrder{}).Where("id = ?", ord.ID).Updates(map[string]interface{}{
+							"payout_transfer_ref":   transferRef,
+							"payout_transferred_at": payoutTime,
+						})
+					}
+				}
+			}
+		}(order)
 
 		return c.JSON(http.StatusOK, echo.Map{
 			"message": "Food delivery confirmed successfully! Funds released to vendor.",
