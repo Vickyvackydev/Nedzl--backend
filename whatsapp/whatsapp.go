@@ -151,3 +151,48 @@ func SendServiceBookingWhatsApp(artisanPhone, bookingNumber, serviceType, custom
 
 	return sendWhatsAppTemplate(artisanPhone, "artisan_booking_alert", parameters)
 }
+
+// SendCustomerFoodDeliveredWhatsApp sends a notification to the customer when a vendor marks their food order as delivered
+func SendCustomerFoodDeliveredWhatsApp(customerPhone, customerName, orderNumber, productName, vendorName string) error {
+	fmt.Printf("[WhatsApp Trigger] SendCustomerFoodDeliveredWhatsApp invoked for order: %s, customerPhone: '%s'\n", orderNumber, customerPhone)
+
+	if customerPhone == "" {
+		fmt.Println("[WhatsApp Warning] Customer phone number is empty. Cannot send food delivery alert.")
+		return nil
+	}
+
+	link := "https://nedzl.com/dashboard?tab=my_orders"
+
+	parameters := []map[string]interface{}{
+		{"type": "text", "text": customerName},
+		{"type": "text", "text": orderNumber},
+		{"type": "text", "text": productName},
+		{"type": "text", "text": vendorName},
+		{"type": "text", "text": link},
+	}
+
+	return sendWhatsAppTemplate(customerPhone, "customer_food_delivered", parameters)
+}
+
+// SendCustomerServiceCompletedWhatsApp sends a notification to the customer when an artisan marks their service as completed
+func SendCustomerServiceCompletedWhatsApp(customerPhone, customerName, bookingNumber, serviceName, artisanName string) error {
+	fmt.Printf("[WhatsApp Trigger] SendCustomerServiceCompletedWhatsApp invoked for booking: %s, customerPhone: '%s'\n", bookingNumber, customerPhone)
+
+	if customerPhone == "" {
+		fmt.Println("[WhatsApp Warning] Customer phone number is empty. Cannot send service completion alert.")
+		return nil
+	}
+
+	link := "https://nedzl.com/dashboard?tab=service_bookings"
+
+	parameters := []map[string]interface{}{
+		{"type": "text", "text": customerName},
+		{"type": "text", "text": bookingNumber},
+		{"type": "text", "text": serviceName},
+		{"type": "text", "text": artisanName},
+		{"type": "text", "text": link},
+	}
+
+	return sendWhatsAppTemplate(customerPhone, "customer_service_completed", parameters)
+}
+

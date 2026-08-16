@@ -211,9 +211,11 @@ func UpdateFoodOrderStatus(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusNotFound, "Food order not found", err)
 		}
 
+		isDelivered := false
 		order.Status = body.Status
 		if body.Status == "DELIVERED" || body.Status == "DELIVERED_BY_VENDOR" {
 			order.Status = "DELIVERED_BY_VENDOR"
+			isDelivered = true
 			now := time.Now()
 			order.VendorDeliveredAt = &now
 			// PaymentStatus remains HELD_IN_ESCROW until customer confirms receipt
@@ -226,12 +228,51 @@ func UpdateFoodOrderStatus(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update order status", err)
 		}
 
+		if isDelivered {
+			// Trigger WhatsApp & Email notifications to customer asynchronously
+			go func(ord models.FoodOrder) {
+				db.Preload("User").Preload("Vendor").Preload("Product").First(&ord, "id = ?", ord.ID)
+
+				custName := ord.CustomerName
+				if custName == "" {
+					custName = ord.User.UserName
+				}
+				if custName == "" {
+					custName = "Customer"
+				}
+
+				custPhone := ord.CustomerPhone
+				if custPhone == "" {
+					custPhone = ord.User.PhoneNumber
+				}
+
+				vendorName := ord.Vendor.UserName
+				if vendorName == "" {
+					vendorName = "Food Vendor"
+				}
+
+				productName := ord.Product.Name
+				if productName == "" {
+					productName = "Meal Order"
+				}
+
+				// 1. Send WhatsApp Message
+				whatsapp.SendCustomerFoodDeliveredWhatsApp(custPhone, custName, ord.OrderNumber, productName, vendorName)
+
+				// 2. Send Email Notification
+				if ord.User.Email != "" {
+					emails.SendCustomerFoodDeliveredEmail(ord.User.Email, custName, ord.OrderNumber, productName, vendorName)
+				}
+			}(order)
+		}
+
 		return c.JSON(http.StatusOK, echo.Map{
 			"message": "Order status updated",
 			"order":   order,
 		})
 	}
 }
+
 
 // ConfirmFoodOrderDelivery allows the customer to confirm they received their food order and release payment to the vendor
 func ConfirmFoodOrderDelivery(db *gorm.DB) echo.HandlerFunc {

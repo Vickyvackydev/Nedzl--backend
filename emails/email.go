@@ -1345,3 +1345,136 @@ func SendGuestProductListedEmail(toEmail, productName, productID string) error {
 	_, err := Client.Emails.Send(params)
 	return err
 }
+
+// SendCustomerFoodDeliveredEmail notifies customer that their food order was delivered by the vendor
+func SendCustomerFoodDeliveredEmail(toEmail, customerName, orderNumber, productName, vendorName string) error {
+	if Client == nil {
+		InitEmailClient()
+	}
+
+	if toEmail == "" {
+		return nil
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { background: #07B463; padding: 25px 20px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; }
+        .content { padding: 30px; color: #333333; line-height: 1.6; }
+        .card { background: #f9fafb; border: 1px solid #edf2f7; border-radius: 10px; padding: 20px; margin: 20px 0; border-left: 4px solid #07B463; }
+        .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; }
+        .notice-box { background: #fefce8; border: 1px solid #fef08a; padding: 14px; border-radius: 8px; margin: 15px 0; color: #854d0e; font-size: 13px; }
+        .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍲 Food Order Marked as Delivered!</h1>
+        </div>
+        <div class="content">
+            <h2>Hello %s,</h2>
+            <p>Your food vendor, <strong>%s</strong>, has marked your meal order as delivered.</p>
+            <div class="card">
+                <p style="margin: 0; font-weight: 700; color: #07B463;">Order #%s</p>
+                <p style="margin: 8px 0 0 0; font-size: 16px;"><strong>Meal:</strong> %s</p>
+                <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 13px;">Vendor: %s</p>
+            </div>
+            <div class="notice-box">
+                <strong>💡 Help your vendor get paid faster!</strong><br/>
+                Confirming food receipt on the Nedzl website releases escrow funds directly to the vendor without waiting for the 24-hour auto-release timer.
+            </div>
+            <div style="text-align: center; margin: 25px 0;">
+                <a href="https://nedzl.com/dashboard?tab=my_orders" class="btn">Confirm Food Received</a>
+            </div>
+            <p>Best regards,<br>The Nedzl Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; %d Nedzl Marketplace. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`, customerName, vendorName, orderNumber, productName, vendorName, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "orders@nedzl.com",
+		To:      []string{toEmail},
+		Html:    html,
+		Subject: fmt.Sprintf("🍲 Food Order #%s Marked as Delivered by %s", orderNumber, vendorName),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+
+// SendCustomerServiceCompletedEmail notifies customer that artisan completed their booked service
+func SendCustomerServiceCompletedEmail(toEmail, customerName, bookingNumber, serviceName, artisanName string) error {
+	if Client == nil {
+		InitEmailClient()
+	}
+
+	if toEmail == "" {
+		return nil
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { background: #07B463; padding: 25px 20px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; }
+        .content { padding: 30px; color: #333333; line-height: 1.6; }
+        .card { background: #f9fafb; border: 1px solid #edf2f7; border-radius: 10px; padding: 20px; margin: 20px 0; border-left: 4px solid #07B463; }
+        .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; }
+        .notice-box { background: #fefce8; border: 1px solid #fef08a; padding: 14px; border-radius: 8px; margin: 15px 0; color: #854d0e; font-size: 13px; }
+        .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ Service Booking Marked as Completed!</h1>
+        </div>
+        <div class="content">
+            <h2>Hello %s,</h2>
+            <p>Your service provider, <strong>%s</strong>, has marked your service booking as completed.</p>
+            <div class="card">
+                <p style="margin: 0; font-weight: 700; color: #07B463;">Booking #%s</p>
+                <p style="margin: 8px 0 0 0; font-size: 16px;"><strong>Service:</strong> %s</p>
+                <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 13px;">Artisan: %s</p>
+            </div>
+            <div class="notice-box">
+                <strong>💡 Help your artisan get paid faster!</strong><br/>
+                Confirming service completion on the Nedzl website releases escrow funds directly to the artisan without waiting for the 24-hour auto-release timer.
+            </div>
+            <div style="text-align: center; margin: 25px 0;">
+                <a href="https://nedzl.com/dashboard?tab=service_bookings" class="btn">Confirm Service Completed</a>
+            </div>
+            <p>Best regards,<br>The Nedzl Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; %d Nedzl Marketplace. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`, customerName, artisanName, bookingNumber, serviceName, artisanName, time.Now().Year())
+
+	params := &resend.SendEmailRequest{
+		From:    "bookings@nedzl.com",
+		To:      []string{toEmail},
+		Html:    html,
+		Subject: fmt.Sprintf("🛠️ Service Booking #%s Marked as Completed by %s", bookingNumber, artisanName),
+	}
+
+	_, err := Client.Emails.Send(params)
+	return err
+}
+

@@ -204,12 +204,46 @@ func ArtisanCompleteBooking(db *gorm.DB) echo.HandlerFunc {
 			return utils.ResponseError(c, http.StatusInternalServerError, "Failed to update booking", err)
 		}
 
+		// Trigger WhatsApp & Email notifications to customer asynchronously
+		go func(bk models.ServiceBooking) {
+			db.Preload("User").Preload("Artisan").Preload("Service").First(&bk, "id = ?", bk.ID)
+
+			custName := bk.User.UserName
+			if custName == "" {
+				custName = "Customer"
+			}
+
+			custPhone := bk.CustomerPhone
+			if custPhone == "" {
+				custPhone = bk.User.PhoneNumber
+			}
+
+			artisanName := bk.Artisan.UserName
+			if artisanName == "" {
+				artisanName = "Artisan / Service Provider"
+			}
+
+			serviceName := bk.Service.Name
+			if serviceName == "" {
+				serviceName = "Booked Service"
+			}
+
+			// 1. Send WhatsApp Message
+			whatsapp.SendCustomerServiceCompletedWhatsApp(custPhone, custName, bk.BookingNumber, serviceName, artisanName)
+
+			// 2. Send Email Notification
+			if bk.User.Email != "" {
+				emails.SendCustomerServiceCompletedEmail(bk.User.Email, custName, bk.BookingNumber, serviceName, artisanName)
+			}
+		}(booking)
+
 		return c.JSON(http.StatusOK, echo.Map{
 			"message": "Service marked as completed by artisan. Waiting for customer confirmation or 24-hour auto-payout.",
 			"booking": booking,
 		})
 	}
 }
+
 
 func CustomerCompleteBooking(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
