@@ -159,6 +159,8 @@ func main() {
 	admin.PATCH("/products/update/:id/status", handlers.UpdateProductStatus(db.DB))
 	admin.POST("/newsletter", handlers.SendNewsletter(db.DB))
 	admin.POST("/send-weekly-view-stats", handlers.SendWeeklyViewStatsSummary(db.DB))
+	admin.GET("/cleanup/stats", handlers.GetDatabaseCleanupStats(db.DB))
+	admin.POST("/cleanup/clear", handlers.ClearOrdersAndBookings(db.DB))
 
 	// -- REVIEW ROUTES -->
 
