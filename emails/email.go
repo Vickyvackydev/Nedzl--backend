@@ -1,8 +1,11 @@
 package emails
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -22,6 +25,30 @@ type EmailProduct struct {
 	Price       float64
 	Description string
 	ImageUrl    string
+}
+
+type BrevoSender struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type BrevoRecipient struct {
+	Email string `json:"email"`
+	Name  string `json:"name,omitempty"`
+}
+
+type BrevoMessageVersion struct {
+	To     []BrevoRecipient       `json:"to"`
+	Params map[string]interface{} `json:"params,omitempty"`
+}
+
+type BrevoSendRequest struct {
+	Sender          BrevoSender            `json:"sender"`
+	To              []BrevoRecipient       `json:"to,omitempty"`
+	Subject         string                 `json:"subject"`
+	HTMLContent     string                 `json:"htmlContent"`
+	Params          map[string]interface{} `json:"params,omitempty"`
+	MessageVersions []BrevoMessageVersion  `json:"messageVersions,omitempty"`
 }
 
 func formatPrice(price float64) string {
@@ -45,14 +72,151 @@ var (
 
 func InitEmailClient() {
 	once.Do(func() {
-		apiKey := os.Getenv("RESEND_API_KEY")
-		if apiKey == "" {
-			fmt.Println("❌ RESEND_API_KEY is EMPTY in InitEmailClient")
-		} else {
-			fmt.Printf("✅ RESEND_API_KEY loaded: %s...\n", apiKey[:10]) // Print first 10 chars
+		brevoKey := os.Getenv("BREVO_API_KEY")
+		if brevoKey != "" {
+			fmt.Printf("✅ BREVO_API_KEY loaded: %s...\n", brevoKey[:10])
 		}
-		Client = resend.NewClient(apiKey)
+		apiKey := os.Getenv("RESEND_API_KEY")
+		if apiKey != "" {
+			fmt.Printf("✅ RESEND_API_KEY loaded: %s...\n", apiKey[:10])
+			Client = resend.NewClient(apiKey)
+		}
+		if brevoKey == "" && apiKey == "" {
+			fmt.Println("❌ Neither BREVO_API_KEY nor RESEND_API_KEY is set in environment")
+		}
 	})
+}
+
+func sendBrevoSingleEmail(toEmail, toName, subject, htmlContent string) error {
+	apiKey := os.Getenv("BREVO_API_KEY")
+	if apiKey == "" {
+		return fmt.Errorf("BREVO_API_KEY is missing")
+	}
+
+	payload := BrevoSendRequest{
+		Sender: BrevoSender{
+			Name:  "NedZl Marketplace",
+			Email: "noreply@nedzl.com",
+		},
+		To: []BrevoRecipient{
+			{Email: toEmail, Name: toName},
+		},
+		Subject:     subject,
+		HTMLContent: htmlContent,
+	}
+
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal Brevo payload: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create Brevo HTTP request: %w", err)
+	}
+
+	req.Header.Set("api-key", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send Brevo HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("brevo API error (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
+func sendBrevoBatchEmail(versions []BrevoMessageVersion, subject, htmlTemplate string) error {
+	apiKey := os.Getenv("BREVO_API_KEY")
+	if apiKey == "" {
+		return fmt.Errorf("BREVO_API_KEY is missing")
+	}
+
+	if len(versions) == 0 {
+		return nil
+	}
+
+	const batchSize = 500
+	for i := 0; i < len(versions); i += batchSize {
+		end := i + batchSize
+		if end > len(versions) {
+			end = len(versions)
+		}
+		chunk := versions[i:end]
+
+		payload := BrevoSendRequest{
+			Sender: BrevoSender{
+				Name:  "NedZl Marketplace",
+				Email: "noreply@nedzl.com",
+			},
+			Subject:         subject,
+			HTMLContent:     htmlTemplate,
+			MessageVersions: chunk,
+		}
+
+		bodyBytes, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("failed to marshal Brevo batch payload: %w", err)
+		}
+
+		req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(bodyBytes))
+		if err != nil {
+			return fmt.Errorf("failed to create Brevo batch HTTP request: %w", err)
+		}
+
+		req.Header.Set("api-key", apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to send Brevo batch HTTP request: %w", err)
+		}
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			respBody, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return fmt.Errorf("brevo batch API error starting at index %d (status %d): %s", i, resp.StatusCode, string(respBody))
+		}
+		resp.Body.Close()
+
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	return nil
+}
+
+func sendSingleMail(toEmail, toName, subject, htmlContent string) error {
+	if os.Getenv("BREVO_API_KEY") != "" {
+		return sendBrevoSingleEmail(toEmail, toName, subject, htmlContent)
+	}
+
+	if Client == nil {
+		apiKey := os.Getenv("RESEND_API_KEY")
+		if apiKey != "" {
+			Client = resend.NewClient(apiKey)
+		} else {
+			return fmt.Errorf("email client not initialized (missing BREVO_API_KEY and RESEND_API_KEY)")
+		}
+	}
+
+	params := &resend.SendEmailRequest{
+		From:    "noreply@nedzl.com",
+		To:      []string{toEmail},
+		Html:    htmlContent,
+		Subject: subject,
+	}
+	_, err := Client.Emails.Send(params)
+	return err
 }
 
 func SendVerificationMail(to, username, token string, expiryTime time.Time) error {
@@ -117,17 +281,8 @@ func SendVerificationMail(to, username, token string, expiryTime time.Time) erro
     </body>
     </html>`, username, verificationLink, expiryFormatted, verificationLink, time.Now().Year())
 
-	params := &resend.SendEmailRequest{
-		From:    "noreply@nedzl.com",
-		To:      []string{to},
-		Html:    html,
-		Subject: "Verify your NedZl email",
-	}
-
 	fmt.Printf("Sending verification email to %s\n", to)
-	_, err := Client.Emails.Send(params)
-
-	return err
+	return sendSingleMail(to, username, "Verify your NedZl email", html)
 }
 
 func SendUserDeactivationEmail(to, username string) error {
@@ -747,10 +902,6 @@ func SendPasswordResetSuccessMail(to, username string) error {
 }
 
 func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailProduct) error {
-	if Client == nil {
-		return fmt.Errorf("email client not initialized")
-	}
-
 	productsHtml := ""
 	for _, p := range products {
 		priceStr := formatPrice(p.Price)
@@ -769,6 +920,80 @@ func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailPr
                         </td>
                     </tr>
                 </table>`, p.ImageUrl, p.Name, p.Name, priceStr, p.ID)
+	}
+
+	brevoKey := os.Getenv("BREVO_API_KEY")
+	if brevoKey != "" {
+		htmlTemplate := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
+            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>Hi {{params.FNAME}},</h2>
+                <p>Just letting you know that some new listings have been posted on the NedZl campus board today. Take a quick look to see if anything catches your eye!</p>
+                
+                <div style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 12px; overflow: hidden; margin: 25px 0;">
+                    <p style="margin: 0; padding: 15px 15px 10px 15px; font-weight: 700; color: #2d3748; font-size: 15px; border-bottom: 1px solid #edf2f7; background-color: #fafbfc;">Recent Student Listings</p>
+                    %s
+                </div>
+
+                <p>Click below to browse the items and contact the sellers directly.</p>
+
+                <div style="text-align: center; margin: 25px 0;">
+                    <a href="https://nedzl.com" class="btn">Browse Campus Board</a>
+                </div>
+
+                <p>Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, productsHtml, time.Now().Year())
+
+		var versions []BrevoMessageVersion
+		for _, r := range recipients {
+			firstName := r.UserName
+			if firstName == "" {
+				firstName = "there"
+			} else {
+				if parts := strings.Fields(firstName); len(parts) > 0 {
+					firstName = parts[0]
+				}
+			}
+			versions = append(versions, BrevoMessageVersion{
+				To: []BrevoRecipient{
+					{Email: r.Email, Name: r.UserName},
+				},
+				Params: map[string]interface{}{
+					"FNAME": firstName,
+				},
+			})
+		}
+
+		return sendBrevoBatchEmail(versions, "New student listings posted on NedZl", htmlTemplate)
+	}
+
+	if Client == nil {
+		return fmt.Errorf("email client not initialized")
 	}
 
 	var emailRequests []*resend.SendEmailRequest
@@ -855,6 +1080,65 @@ func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailPr
 }
 
 func SendCustomNewsletter(recipients []BulkEmailRecipient, subject, body string) error {
+	brevoKey := os.Getenv("BREVO_API_KEY")
+	if brevoKey != "" {
+		htmlTemplate := fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: #07B463; padding: 30px 20px; text-align: center; }
+            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .content { padding: 35px; color: #333333; line-height: 1.6; }
+            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>NedZl</h1>
+            </div>
+            <div class="content">
+                <h2>Hi {{params.FNAME}},</h2>
+                <div style="color: #333333; font-size: 15px; white-space: pre-wrap; line-height: 1.6; margin-bottom: 25px;">
+%s
+                </div>
+                <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>`, body, time.Now().Year())
+
+		var versions []BrevoMessageVersion
+		for _, r := range recipients {
+			firstName := r.UserName
+			if firstName == "" {
+				firstName = "there"
+			} else {
+				if parts := strings.Fields(firstName); len(parts) > 0 {
+					firstName = parts[0]
+				}
+			}
+			versions = append(versions, BrevoMessageVersion{
+				To: []BrevoRecipient{
+					{Email: r.Email, Name: r.UserName},
+				},
+				Params: map[string]interface{}{
+					"FNAME": firstName,
+				},
+			})
+		}
+
+		return sendBrevoBatchEmail(versions, subject, htmlTemplate)
+	}
+
 	if Client == nil {
 		return fmt.Errorf("email client not initialized")
 	}
