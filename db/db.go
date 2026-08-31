@@ -77,6 +77,7 @@ func ConnectDb() {
 		&models.FoodOrder{},
 		&models.ServiceBooking{},
 		&models.CommunityMessage{},
+		&models.BulkEmailQueueItem{},
 	); err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}

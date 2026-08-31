@@ -46,6 +46,7 @@ func main() {
 	// db.ResetDatabase(db.DB)
 
 	emails.InitEmailClient()
+	emails.StartBulkEmailQueueWorker(db.DB)
 	utils.StartJobs(db.DB)
 
 	e := echo.New()

@@ -266,7 +266,7 @@ func CheckAndSendBulkEmails(db *gorm.DB) {
 		}
 
 		if len(recipients) > 0 {
-			err := emails.SendNewProductsBulkMail(recipients, emailProducts)
+			err := emails.SendNewProductsBulkMail(db, recipients, emailProducts)
 			if err != nil {
 				log.Println("Error sending bulk email:", err)
 				return

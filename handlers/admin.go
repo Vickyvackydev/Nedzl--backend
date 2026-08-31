@@ -754,7 +754,7 @@ func SendNewsletter(db *gorm.DB) echo.HandlerFunc {
 
 		// Send in a goroutine to prevent blocking the admin client
 		go func(rec []emails.BulkEmailRecipient, subj, msg string) {
-			if err := emails.SendCustomNewsletter(rec, subj, msg); err != nil {
+			if err := emails.SendCustomNewsletter(db, rec, subj, msg); err != nil {
 				fmt.Printf("Error sending custom newsletter email: %v\n", err)
 			}
 		}(recipients, req.Subject, req.Message)

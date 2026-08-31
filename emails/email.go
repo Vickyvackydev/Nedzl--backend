@@ -11,7 +11,9 @@ import (
 	"sync"
 	"time"
 
+	"api/models"
 	"github.com/resend/resend-go/v3"
+	"gorm.io/gorm"
 )
 
 type BulkEmailRecipient struct {
@@ -901,7 +903,11 @@ func SendPasswordResetSuccessMail(to, username string) error {
 	return err
 }
 
-func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailProduct) error {
+func SendNewProductsBulkMail(db *gorm.DB, recipients []BulkEmailRecipient, products []EmailProduct) error {
+	if len(recipients) == 0 {
+		return nil
+	}
+
 	productsHtml := ""
 	for _, p := range products {
 		priceStr := formatPrice(p.Price)
@@ -922,81 +928,7 @@ func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailPr
                 </table>`, p.ImageUrl, p.Name, p.Name, priceStr, p.ID)
 	}
 
-	brevoKey := os.Getenv("BREVO_API_KEY")
-	if brevoKey != "" {
-		htmlTemplate := fmt.Sprintf(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-            .header { background: #07B463; padding: 30px 20px; text-align: center; }
-            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-            .content { padding: 35px; color: #333333; line-height: 1.6; }
-            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
-            .btn { display: inline-block; background: #07B463; color: #ffffff !important; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; }
-            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>NedZl</h1>
-            </div>
-            <div class="content">
-                <h2>Hi {{params.FNAME}},</h2>
-                <p>Just letting you know that some new listings have been posted on the NedZl campus board today. Take a quick look to see if anything catches your eye!</p>
-                
-                <div style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 12px; overflow: hidden; margin: 25px 0;">
-                    <p style="margin: 0; padding: 15px 15px 10px 15px; font-weight: 700; color: #2d3748; font-size: 15px; border-bottom: 1px solid #edf2f7; background-color: #fafbfc;">Recent Student Listings</p>
-                    %s
-                </div>
-
-                <p>Click below to browse the items and contact the sellers directly.</p>
-
-                <div style="text-align: center; margin: 25px 0;">
-                    <a href="https://nedzl.com" class="btn">Browse Campus Board</a>
-                </div>
-
-                <p>Best regards,<br>The NedZl Team</p>
-            </div>
-            <div class="footer">
-                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>`, productsHtml, time.Now().Year())
-
-		var versions []BrevoMessageVersion
-		for _, r := range recipients {
-			firstName := r.UserName
-			if firstName == "" {
-				firstName = "there"
-			} else {
-				if parts := strings.Fields(firstName); len(parts) > 0 {
-					firstName = parts[0]
-				}
-			}
-			versions = append(versions, BrevoMessageVersion{
-				To: []BrevoRecipient{
-					{Email: r.Email, Name: r.UserName},
-				},
-				Params: map[string]interface{}{
-					"FNAME": firstName,
-				},
-			})
-		}
-
-		return sendBrevoBatchEmail(versions, "New student listings posted on NedZl", htmlTemplate)
-	}
-
-	if Client == nil {
-		return fmt.Errorf("email client not initialized")
-	}
-
-	var emailRequests []*resend.SendEmailRequest
+	var queueItems []models.BulkEmailQueueItem
 
 	for _, r := range recipients {
 		firstName := r.UserName
@@ -1053,97 +985,31 @@ func SendNewProductsBulkMail(recipients []BulkEmailRecipient, products []EmailPr
     </body>
     </html>`, firstName, productsHtml, time.Now().Year())
 
-		req := &resend.SendEmailRequest{
-			From:    "noreply@nedzl.com",
-			To:      []string{r.Email},
-			Html:    html,
-			Subject: "New student listings posted on NedZl",
-		}
-		emailRequests = append(emailRequests, req)
+		queueItems = append(queueItems, models.BulkEmailQueueItem{
+			RecipientEmail: r.Email,
+			RecipientName:  r.UserName,
+			Subject:        "New student listings posted on NedZl",
+			HTMLContent:    html,
+			Status:         "PENDING",
+		})
 	}
 
-	const batchSize = 100
-	for i := 0; i < len(emailRequests); i += batchSize {
-		end := i + batchSize
-		if end > len(emailRequests) {
-			end = len(emailRequests)
+	if db != nil {
+		if err := db.Create(&queueItems).Error; err != nil {
+			return fmt.Errorf("failed to enqueue new product emails: %w", err)
 		}
-		batch := emailRequests[i:end]
-
-		_, err := Client.Batch.Send(batch)
-		if err != nil {
-			return fmt.Errorf("failed to send email batch starting at index %d: %w", i, err)
-		}
+		TriggerQueueProcessing(db)
 	}
 
 	return nil
 }
 
-func SendCustomNewsletter(recipients []BulkEmailRecipient, subject, body string) error {
-	brevoKey := os.Getenv("BREVO_API_KEY")
-	if brevoKey != "" {
-		htmlTemplate := fmt.Sprintf(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-            .header { background: #07B463; padding: 30px 20px; text-align: center; }
-            .header h1 { color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-            .content { padding: 35px; color: #333333; line-height: 1.6; }
-            .content h2 { color: #07B463; font-size: 18px; margin-top: 0; }
-            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #718096; font-size: 12px; border-top: 1px solid #edf2f7; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>NedZl</h1>
-            </div>
-            <div class="content">
-                <h2>Hi {{params.FNAME}},</h2>
-                <div style="color: #333333; font-size: 15px; white-space: pre-wrap; line-height: 1.6; margin-bottom: 25px;">
-%s
-                </div>
-                <p style="margin-top: 30px;">Best regards,<br>The NedZl Team</p>
-            </div>
-            <div class="footer">
-                <p>&copy; %d NedZl Marketplace. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>`, body, time.Now().Year())
-
-		var versions []BrevoMessageVersion
-		for _, r := range recipients {
-			firstName := r.UserName
-			if firstName == "" {
-				firstName = "there"
-			} else {
-				if parts := strings.Fields(firstName); len(parts) > 0 {
-					firstName = parts[0]
-				}
-			}
-			versions = append(versions, BrevoMessageVersion{
-				To: []BrevoRecipient{
-					{Email: r.Email, Name: r.UserName},
-				},
-				Params: map[string]interface{}{
-					"FNAME": firstName,
-				},
-			})
-		}
-
-		return sendBrevoBatchEmail(versions, subject, htmlTemplate)
+func SendCustomNewsletter(db *gorm.DB, recipients []BulkEmailRecipient, subject, body string) error {
+	if len(recipients) == 0 {
+		return nil
 	}
 
-	if Client == nil {
-		return fmt.Errorf("email client not initialized")
-	}
-
-	var emailRequests []*resend.SendEmailRequest
+	var queueItems []models.BulkEmailQueueItem
 
 	for _, r := range recipients {
 		firstName := r.UserName
@@ -1189,27 +1055,20 @@ func SendCustomNewsletter(recipients []BulkEmailRecipient, subject, body string)
     </body>
     </html>`, firstName, body, time.Now().Year())
 
-		req := &resend.SendEmailRequest{
-			From:    "noreply@nedzl.com",
-			To:      []string{r.Email},
-			Html:    html,
-			Subject: subject,
-		}
-		emailRequests = append(emailRequests, req)
+		queueItems = append(queueItems, models.BulkEmailQueueItem{
+			RecipientEmail: r.Email,
+			RecipientName:  r.UserName,
+			Subject:        subject,
+			HTMLContent:    html,
+			Status:         "PENDING",
+		})
 	}
 
-	const batchSize = 100
-	for i := 0; i < len(emailRequests); i += batchSize {
-		end := i + batchSize
-		if end > len(emailRequests) {
-			end = len(emailRequests)
+	if db != nil {
+		if err := db.Create(&queueItems).Error; err != nil {
+			return fmt.Errorf("failed to enqueue newsletter emails: %w", err)
 		}
-		batch := emailRequests[i:end]
-
-		_, err := Client.Batch.Send(batch)
-		if err != nil {
-			return fmt.Errorf("failed to send newsletter batch starting at index %d: %w", i, err)
-		}
+		TriggerQueueProcessing(db)
 	}
 
 	return nil
